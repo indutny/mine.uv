@@ -14,7 +14,7 @@
 static int mc_parser__read_u8(mc_parser_t* p, uint8_t* out);
 static int mc_parser__read_u16(mc_parser_t* p, uint16_t* out);
 static int mc_parser__read_u32(mc_parser_t* p, uint32_t* out);
-static int mc_parser__read_string(mc_parser_t* p, mc_frame_string_t* str);
+static int mc_parser__read_string(mc_parser_t* p, mc_string_t* str);
 static int mc_parser__parse_handshake(mc_parser_t* p, mc_frame_t* frame);
 
 int mc_parser_execute(uint8_t* data, ssize_t len, mc_frame_t* frame) {
@@ -30,16 +30,20 @@ int mc_parser_execute(uint8_t* data, ssize_t len, mc_frame_t* frame) {
   frame->type = (mc_frame_type_t) type;
 
   switch (frame->type) {
-    case MC_KEEPALIVE:
+    case kMCKeepAliveType:
+      PARSE_READ(&parser, u16, &frame->body.keepalive);
       return parser.offset;
-    case MC_ENCRYPTION_REQ:
-    case MC_LOGIN_REQUEST:
-      /* Sent by server */
-      abort();
-    case MC_HANDSHAKE:
+    case kMCHandshakeType:
       return mc_parser__parse_handshake(&parser, frame);
+    case kMCClientStatus:
+      {
+        uint8_t tmp;
+        PARSE_READ(&parser, u8, &tmp);
+        frame->body.client_status = (mc_client_status_t) tmp;
+      }
+      return parser.offset;
     default:
-      /* Unknown frame */
+      /* Unknown frame, or frame should be sent by server */
       return -1;
   }
 }
@@ -81,7 +85,7 @@ int mc_parser__read_u32(mc_parser_t* p, uint32_t* out) {
 }
 
 
-int mc_parser__read_string(mc_parser_t* p, mc_frame_string_t* str) {
+int mc_parser__read_string(mc_parser_t* p, mc_string_t* str) {
   int r;
   uint16_t len;
   char* data;

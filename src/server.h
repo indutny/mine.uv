@@ -14,9 +14,16 @@ struct mc_config_s {
 struct mc_server_s {
   uv_loop_t* loop;
   uv_tcp_t tcp;
+
+  int version;
+
+  /* RSA key */
   RSA* rsa;
-  char rsa_asn1[4096];
-  int rsa_asn1_len;
+  char rsa_pub_asn1[4096];
+  int rsa_pub_asn1_len;
+
+  /* Server id */
+  uint16_t server_id[20];
 };
 
 int mc_server_init(mc_server_t* server, mc_config_t* config);

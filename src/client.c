@@ -5,6 +5,7 @@
 
 #include "client.h"
 #include "uv.h"
+#include "framer.h"
 #include "parser.h"
 #include "server.h"
 
@@ -14,6 +15,7 @@ static void mc_client__on_read(uv_stream_t* stream,
                                ssize_t nread,
                                uv_buf_t buf);
 static void mc_client__cycle(mc_client_t* client);
+static int mc_client__handle_handshake(mc_client_t* client, mc_frame_t* frame);
 static int mc_client__handle_frame(mc_client_t* client, mc_frame_t* frame);
 
 int mc_client_init(mc_server_t* server, mc_client_t* client) {
@@ -21,15 +23,18 @@ int mc_client_init(mc_server_t* server, mc_client_t* client) {
   client->server = server;
   client->tcp.data = client;
 
+  // TODO(indutny): add timeout
   r = uv_read_start((uv_stream_t*) &client->tcp,
                     mc_client__on_alloc,
                     mc_client__on_read);
   if (r != 0)
     return r;
 
+  client->state = kMCInitialState;
   client->encrypted.len = 0;
   client->cleartext.len = 0;
-  client->is_encrypted = 0;
+
+  mc_string_init(&client->username);
 
   return 0;
 }
@@ -40,6 +45,7 @@ void mc_client_destroy(mc_client_t* client) {
   uv_close((uv_handle_t*) &client->tcp, mc_client__on_close);
   client->encrypted.len = 0;
   client->cleartext.len = 0;
+  mc_string_destroy(&client->username);
 }
 
 
@@ -84,11 +90,12 @@ void mc_client__on_read(uv_stream_t* stream, ssize_t nread, uv_buf_t buf) {
 void mc_client__cycle(mc_client_t* client) {
   uint8_t* data;
   ssize_t r;
+  ssize_t offset;
   ssize_t len;
   mc_frame_t frame;
 
   while (client->encrypted.len != 0 || client->cleartext.len != 0) {
-    if (client->is_encrypted) {
+    if (client->state == kMCReadyState) {
       /* NOT SUPPORTED YET */
       abort();
     } else {
@@ -100,10 +107,14 @@ void mc_client__cycle(mc_client_t* client) {
      * Parse one frame, note that frame has the same lifetime as data, and
      * directly depends on it
      */
-    r = mc_parser_execute(data, len, &frame);
+    offset = mc_parser_execute(data, len, &frame);
+
+    /* Parse error */
+    if (offset < 0)
+      return mc_client_destroy(client);
 
     /* Not enough data yet */
-    if (r == 0)
+    if (offset == 0)
       break;
 
     /* Malformed data */
@@ -111,18 +122,71 @@ void mc_client__cycle(mc_client_t* client) {
       return mc_client_destroy(client);
 
     /* Handle frame */
-    r = mc_client__handle_frame(client, &frame);
+    if (client->state != kMCReadyState)
+      r = mc_client__handle_handshake(client, &frame);
+    else
+      r = mc_client__handle_frame(client, &frame);
     if (r != 0)
       return mc_client_destroy(client);
 
-    /* Advance */
-    assert(r <= len);
-    memmove(data, data + r, len - r);
-    if (client->is_encrypted)
-      client->cleartext.len -= r;
+    /* Advance parser */
+    assert(offset <= len);
+    memmove(data, data + offset, len - offset);
+    if (data == client->cleartext.data)
+      client->cleartext.len -= offset;
     else
-      client->encrypted.len -= r;
+      client->encrypted.len -= offset;
   }
+}
+
+
+int mc_client__handle_handshake(mc_client_t* client, mc_frame_t* frame) {
+  int r;
+  switch (client->state) {
+    case kMCInitialState:
+      if (frame->type != kMCHandshakeType)
+        return -1;
+
+      /* Incompatible version */
+      if (frame->body.handshake.version != client->server->version)
+        return -1;
+
+      /* Persist username */
+      r = mc_string_copy(&client->username, &frame->body.handshake.username);
+      if (r != 0)
+        return r;
+
+      /* Send encryption key request */
+      r = mc_framer_enc_key_req(client);
+      if (r != 0)
+        return r;
+
+      client->state = kMCInHandshakeState;
+      break;
+    case kMCInHandshakeState:
+      if (frame->type != kMCEncryptionResType)
+        return -1;
+      r = mc_framer_enc_key_res(client, frame);
+      if (r != 0)
+        return r;
+      client->state = kMCLoginState;
+      break;
+    case kMCLoginState:
+      if (frame->type != kMCClientStatus)
+        return -1;
+
+      if (frame->body.client_status != kMCInitialSpawnStatus)
+        return -1;
+
+      r = mc_framer_login_req(client);
+      if (r != 0)
+        return r;
+      client->state = kMCReadyState;
+      break;
+    default:
+      return -1;
+  }
+  return 0;
 }
 
 

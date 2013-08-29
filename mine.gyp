@@ -8,9 +8,12 @@
     ],
     "sources": [
       "src/main.c",
-      "src/server.c",
+
       "src/client.c",
+      "src/common.c",
+      "src/framer.c",
       "src/parser.c",
+      "src/server.c",
     ],
   }]
 }
