@@ -5,9 +5,12 @@
 
 #include "client.h"
 #include "uv.h"
-#include "framer.h"
-#include "parser.h"
-#include "server.h"
+#include "common.h"  /* mc_string_t */
+#include "common-private.h"  /* ARRAY_SIZE */
+#include "framer.h"  /* mc_framer_t */
+#include "openssl/rand.h"  /* RAND_bytes */
+#include "parser.h"  /* mc_parser_execute */
+#include "server.h"  /* mc_server_t */
 
 static void mc_client__on_close(uv_handle_t* handle);
 static uv_buf_t mc_client__on_alloc(uv_handle_t* handle, size_t suggested_size);
@@ -30,6 +33,10 @@ int mc_client_init(mc_server_t* server, mc_client_t* client) {
   if (r != 0)
     return r;
 
+  r = mc_framer_init(&client->framer);
+  if (r != 0)
+    return r;
+
   client->state = kMCInitialState;
   client->encrypted.len = 0;
   client->cleartext.len = 0;
@@ -43,6 +50,7 @@ int mc_client_init(mc_server_t* server, mc_client_t* client) {
 void mc_client_destroy(mc_client_t* client) {
   uv_read_stop((uv_stream_t*) &client->tcp);
   uv_close((uv_handle_t*) &client->tcp, mc_client__on_close);
+  mc_framer_destroy(&client->framer);
   client->encrypted.len = 0;
   client->cleartext.len = 0;
   mc_string_destroy(&client->username);
@@ -140,6 +148,42 @@ void mc_client__cycle(mc_client_t* client) {
 }
 
 
+int mc_client__send_enc_req(mc_client_t* client) {
+  int r;
+
+  /* Initialize verify token */
+  r = RAND_bytes(client->verify_token, sizeof(client->verify_token));
+  if (r != 1)
+    return -1;
+
+  mc_string_t server_id;
+  mc_string_t public_key;
+  mc_string_t token;
+
+  mc_string_set(&server_id,
+                client->server->server_id,
+                ARRAY_SIZE(client->server->server_id));
+  mc_string_set(&public_key,
+                (const uint16_t*) client->server->rsa_pub_asn1,
+                client->server->rsa_pub_asn1_len);
+  mc_string_set(&token,
+                client->verify_token,
+                ARRAY_SIZE(client->verify_token));
+
+  /* Send encryption key request */
+  r = mc_framer_enc_key_req(&client->framer,
+                            &server_id,
+                            client->server->rsa_pub_asn1,
+                            client->server->rsa_pub_asn1_len,
+                            client->verify_token,
+                            sizeof(client->verify_token));
+  if (r != 0)
+    return r;
+
+  return mc_framer_send(&client->framer, (uv_stream_t*) &client->tcp);
+}
+
+
 int mc_client__handle_handshake(mc_client_t* client, mc_frame_t* frame) {
   int r;
   switch (client->state) {
@@ -156,8 +200,7 @@ int mc_client__handle_handshake(mc_client_t* client, mc_frame_t* frame) {
       if (r != 0)
         return r;
 
-      /* Send encryption key request */
-      r = mc_framer_enc_key_req(client);
+      r = mc_client__send_enc_req(client);
       if (r != 0)
         return r;
 
@@ -166,7 +209,7 @@ int mc_client__handle_handshake(mc_client_t* client, mc_frame_t* frame) {
     case kMCInHandshakeState:
       if (frame->type != kMCEncryptionResType)
         return -1;
-      r = mc_framer_enc_key_res(client, frame);
+      // r = mc_framer_enc_key_res(client, frame);
       if (r != 0)
         return r;
       client->state = kMCLoginState;
@@ -178,7 +221,7 @@ int mc_client__handle_handshake(mc_client_t* client, mc_frame_t* frame) {
       if (frame->body.client_status != kMCInitialSpawnStatus)
         return -1;
 
-      r = mc_framer_login_req(client);
+      // r = mc_framer_login_req(client);
       if (r != 0)
         return r;
       client->state = kMCReadyState;

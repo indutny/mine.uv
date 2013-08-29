@@ -4,12 +4,13 @@
 #include <string.h>  /* memset */
 
 #include "server.h"
+#include "client.h"
+#include "common-private.h"  /* ARRAY_SIZE */
 #include "openssl/bio.h"  /* BIO, BIO_new, ... */
 #include "openssl/pem.h"  /* PEM_write_bio_RSA_PUBKEY */
 #include "openssl/rand.h"  /* RAND_bytes */
 #include "openssl/rsa.h"  /* RSA_generate_key, RSA_free */
 #include "uv.h"
-#include "client.h"
 
 static int mc_server__generate_rsa(mc_server_t* server);
 static int mc_server__generate_id(mc_server_t* server);
@@ -57,7 +58,9 @@ int mc_server_init(mc_server_t* server, mc_config_t* config) {
   return 0;
 
 fatal:
+  free(server->rsa_pub_asn1);
   RSA_free(server->rsa);
+  server->rsa_pub_asn1 = NULL;
   server->rsa = NULL;
 
 failed_generate_key:
@@ -69,36 +72,22 @@ failed_generate_key:
 
 int mc_server__generate_rsa(mc_server_t* server) {
   int r;
-  BIO* bio;
 
   server->rsa = RSA_generate_key(1024, 65537, NULL, NULL);
   if (server->rsa == NULL)
     return -1;
 
   /* Cache ASN1 encoding of public key */
-  bio = BIO_new(BIO_s_mem());
-  if (bio == NULL)
-    return -1;
-
-  r = PEM_write_bio_RSA_PUBKEY(bio, server->rsa);
-  if (r == 1) {
-    r = BIO_read(bio, server->rsa_pub_asn1, sizeof(server->rsa_pub_asn1));
-    r = (r == sizeof(server->rsa_pub_asn1)) ? -1 : 0;
-  } else {
-    r = -1;
-  }
-
-  BIO_free_all(bio);
-  bio = NULL;
-
-  if (r != 0) {
+  server->rsa_pub_asn1 = NULL;
+  r = i2d_RSA_PUBKEY(server->rsa, &server->rsa_pub_asn1);
+  if (r <= 0) {
     RSA_free(server->rsa);
     server->rsa = NULL;
-    return r;
+    return -1;
   }
 
   /* Cache ASN1 encoding length */
-  server->rsa_pub_asn1_len = strlen(server->rsa_pub_asn1);
+  server->rsa_pub_asn1_len = r;
 
   return 0;
 }
@@ -106,8 +95,7 @@ int mc_server__generate_rsa(mc_server_t* server) {
 
 int mc_server__generate_id(mc_server_t* server) {
   int r;
-  int i;
-  int id_len;
+  size_t i;
 
   /* Generate binary server id */
   r = RAND_bytes((unsigned char*) server->server_id, sizeof(server->server_id));
@@ -115,9 +103,8 @@ int mc_server__generate_id(mc_server_t* server) {
     return -1;
 
   /* Translate it into readable character set: U+0021 - U+007E */
-  id_len = sizeof(server->server_id) / sizeof(*server->server_id);
-  for (i = 0; i < id_len; i++)
-    server->server_id[i] = 0x0021 + (server->server_id[i] % 0x005f);
+  for (i = 0; i < ARRAY_SIZE(server->server_id); i++)
+    server->server_id[i] = htons(0x0021 + (server->server_id[i] % 0x005f));
 
   return 0;
 }
@@ -138,6 +125,8 @@ void mc_server_destroy(mc_server_t* server) {
   server->loop = NULL;
   RSA_free(server->rsa);
   server->rsa = NULL;
+  free(server->rsa_pub_asn1);
+  server->rsa_pub_asn1 = NULL;
 }
 
 

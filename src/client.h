@@ -1,10 +1,11 @@
 #ifndef SRC_CLIENT_H_
 #define SRC_CLIENT_H_
 
-#include <stdint.h>  /* uint8_t */
+#include <stdint.h>  /* uint8_t, uint16_t */
 
 #include "uv.h"
-#include "common.h"  // mc_string_t
+#include "common.h"  /* mc_string_t */
+#include "framer.h"  /* mc_farmer_t */
 #include "server.h"
 
 #define MC_MAX_BUF_SIZE 4096
@@ -28,12 +29,14 @@ struct mc_client__buf_s {
 struct mc_client_s {
   mc_server_t* server;
   uv_tcp_t tcp;
+  mc_framer_t framer;
 
   mc_client__state_t state;
   mc_client__buf_t encrypted;
   mc_client__buf_t cleartext;
 
   mc_string_t username;
+  unsigned char verify_token[20];
 };
 
 int mc_client_init(mc_server_t* server, mc_client_t* client);

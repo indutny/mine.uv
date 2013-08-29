@@ -24,8 +24,9 @@ enum mc_client_status_e {
 };
 
 struct mc_string_s {
-  uint8_t* data;
-  int len;
+  const uint16_t* data;
+  uint16_t len;
+  int allocated;
 };
 
 struct mc_frame_s {
@@ -42,14 +43,10 @@ struct mc_frame_s {
   } body;
 };
 
-struct mc_parser_s {
-  uint8_t* data;
-  ssize_t offset;
-  ssize_t len;
-};
-
 void mc_string_init(mc_string_t* str);
 void mc_string_destroy(mc_string_t* str);
+
+void mc_string_set(mc_string_t* str, const uint16_t* data, int len);
 int mc_string_copy(mc_string_t* to, mc_string_t* from);
 
 #endif  /* SRC_COMMON_H_ */

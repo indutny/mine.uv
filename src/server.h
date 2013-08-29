@@ -19,7 +19,7 @@ struct mc_server_s {
 
   /* RSA key */
   RSA* rsa;
-  char rsa_pub_asn1[4096];
+  unsigned char* rsa_pub_asn1;
   int rsa_pub_asn1_len;
 
   /* Server id */

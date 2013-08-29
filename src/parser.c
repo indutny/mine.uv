@@ -7,9 +7,13 @@
 #include "parser.h"
 
 #define PARSE_READ(p, type, out) \
-    r = mc_parser__read_##type((p), (out)); \
-    if (r <= 0) \
-      return r;
+    do { \
+      r = mc_parser__read_##type((p), (out)); \
+      if (r <= 0) \
+        return r; \
+    } while (0)
+
+typedef struct mc_parser_s mc_parser_t;
 
 static int mc_parser__read_u8(mc_parser_t* p, uint8_t* out);
 static int mc_parser__read_u16(mc_parser_t* p, uint16_t* out);
@@ -17,9 +21,17 @@ static int mc_parser__read_u32(mc_parser_t* p, uint32_t* out);
 static int mc_parser__read_string(mc_parser_t* p, mc_string_t* str);
 static int mc_parser__parse_handshake(mc_parser_t* p, mc_frame_t* frame);
 
+struct mc_parser_s {
+  const uint8_t* data;
+  ssize_t offset;
+  ssize_t len;
+};
+
+
 int mc_parser_execute(uint8_t* data, ssize_t len, mc_frame_t* frame) {
   int r;
   uint8_t type;
+  uint8_t tmp;
   mc_parser_t parser;
 
   parser.data = data;
@@ -36,11 +48,8 @@ int mc_parser_execute(uint8_t* data, ssize_t len, mc_frame_t* frame) {
     case kMCHandshakeType:
       return mc_parser__parse_handshake(&parser, frame);
     case kMCClientStatus:
-      {
-        uint8_t tmp;
-        PARSE_READ(&parser, u8, &tmp);
-        frame->body.client_status = (mc_client_status_t) tmp;
-      }
+      PARSE_READ(&parser, u8, &tmp);
+      frame->body.client_status = (mc_client_status_t) tmp;
       return parser.offset;
     default:
       /* Unknown frame, or frame should be sent by server */
@@ -88,17 +97,14 @@ int mc_parser__read_u32(mc_parser_t* p, uint32_t* out) {
 int mc_parser__read_string(mc_parser_t* p, mc_string_t* str) {
   int r;
   uint16_t len;
-  char* data;
+
+  mc_string_init(str);
 
   PARSE_READ(p, u16, &len);
   if (p->len < len * 2)
     return 0;
 
-  data = malloc(len * 2);
-  if (data == NULL)
-    return -1;
-
-  str->data = p->data;
+  str->data = (uint16_t*) p->data;
   str->len = len * 2;
 
   p->data += str->len;
