@@ -23,13 +23,15 @@ int mc_framer_send(mc_framer_t* framer, uv_stream_t* stream);
 /* Generate various frames */
 int mc_framer_enc_key_req(mc_framer_t* framer,
                           mc_string_t* server_id,
-                          unsigned char* public_key,
+                          const unsigned char* public_key,
                           uint16_t public_key_len,
-                          unsigned char* token,
+                          const unsigned char* token,
                           uint16_t token_len);
 int mc_framer_enc_key_res(mc_framer_t* framer,
-                          mc_string_t* secret,
-                          mc_string_t* token_response);
+                          const unsigned char* secret,
+                          uint16_t secret_len,
+                          const unsigned char* token,
+                          uint16_t token_len);
 int mc_framer_login_req(mc_framer_t* framer,
                         uint32_t entity_id,
                         mc_string_t* level_type,

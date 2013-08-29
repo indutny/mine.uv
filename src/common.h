@@ -40,6 +40,12 @@ struct mc_frame_s {
       mc_string_t host;
       uint32_t port;
     } handshake;
+    struct {
+      uint16_t secret_len;
+      unsigned char* secret;
+      uint16_t token_len;
+      unsigned char* token;
+    } enc_resp;
   } body;
 };
 
@@ -48,5 +54,6 @@ void mc_string_destroy(mc_string_t* str);
 
 void mc_string_set(mc_string_t* str, const uint16_t* data, int len);
 int mc_string_copy(mc_string_t* to, mc_string_t* from);
+char* mc_string_to_ascii(mc_string_t* str);
 
 #endif  /* SRC_COMMON_H_ */

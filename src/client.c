@@ -1,13 +1,14 @@
 #include <assert.h>  /* assert */
 #include <stdint.h>  /* uint8_t */
 #include <stdlib.h>  /* free */
-#include <string.h>  /* memmove */
+#include <string.h>  /* memmove, strlen */
 
 #include "client.h"
 #include "uv.h"
 #include "common.h"  /* mc_string_t */
 #include "common-private.h"  /* ARRAY_SIZE */
 #include "framer.h"  /* mc_framer_t */
+#include "openssl/evp.h"  /* EVP_* */
 #include "openssl/rand.h"  /* RAND_bytes */
 #include "parser.h"  /* mc_parser_execute */
 #include "server.h"  /* mc_server_t */
@@ -18,6 +19,9 @@ static void mc_client__on_read(uv_stream_t* stream,
                                ssize_t nread,
                                uv_buf_t buf);
 static void mc_client__cycle(mc_client_t* client);
+static int mc_client__send_enc_req(mc_client_t* client);
+static int mc_client__check_enc_res(mc_client_t* client, mc_frame_t* frame);
+static int mc_client__compute_api_hash(mc_client_t* client);
 static int mc_client__handle_handshake(mc_client_t* client, mc_frame_t* frame);
 static int mc_client__handle_frame(mc_client_t* client, mc_frame_t* frame);
 
@@ -26,7 +30,7 @@ int mc_client_init(mc_server_t* server, mc_client_t* client) {
   client->server = server;
   client->tcp.data = client;
 
-  // TODO(indutny): add timeout
+  /* TODO(indutny): add timeout */
   r = uv_read_start((uv_stream_t*) &client->tcp,
                     mc_client__on_alloc,
                     mc_client__on_read);
@@ -42,6 +46,9 @@ int mc_client_init(mc_server_t* server, mc_client_t* client) {
   client->cleartext.len = 0;
 
   mc_string_init(&client->username);
+  client->ascii_username = NULL;
+  client->secret = NULL;
+  client->secret_len = 0;
 
   return 0;
 }
@@ -54,6 +61,10 @@ void mc_client_destroy(mc_client_t* client) {
   client->encrypted.len = 0;
   client->cleartext.len = 0;
   mc_string_destroy(&client->username);
+  free(client->ascii_username);
+  client->ascii_username = NULL;
+  free(client->secret);
+  client->secret = NULL;
 }
 
 
@@ -97,15 +108,37 @@ void mc_client__on_read(uv_stream_t* stream, ssize_t nread, uv_buf_t buf) {
  */
 void mc_client__cycle(mc_client_t* client) {
   uint8_t* data;
+  int block_size;
+  int avail;
   ssize_t r;
   ssize_t offset;
   ssize_t len;
   mc_frame_t frame;
 
   while (client->encrypted.len != 0 || client->cleartext.len != 0) {
-    if (client->state == kMCReadyState) {
-      /* NOT SUPPORTED YET */
-      abort();
+    if (client->secret_len != 0) {
+      /* If there's enough encrypted input, and enough space in cleartext */
+      block_size = EVP_CIPHER_CTX_block_size(&client->aes_in);
+      while (client->encrypted.len >= block_size) {
+        /* Get amount of data available for write in cleartext */
+        avail = sizeof(client->cleartext.data) - client->cleartext.len;
+        if (avail < client->encrypted.len + block_size)
+          break;
+
+        r = EVP_DecryptUpdate(&client->aes_in,
+                              client->cleartext.data + client->cleartext.len,
+                              &avail,
+                              client->encrypted.data,
+                              client->encrypted.len);
+        if (r != 1)
+          return mc_client_destroy(client);
+        client->cleartext.len += avail;
+        assert((size_t) client->cleartext.len <=
+               sizeof(client->cleartext.data));
+      }
+
+      data = client->cleartext.data;
+      len = client->cleartext.len;
     } else {
       data = client->encrypted.data;
       len = client->encrypted.len;
@@ -157,18 +190,10 @@ int mc_client__send_enc_req(mc_client_t* client) {
     return -1;
 
   mc_string_t server_id;
-  mc_string_t public_key;
-  mc_string_t token;
 
   mc_string_set(&server_id,
                 client->server->server_id,
                 ARRAY_SIZE(client->server->server_id));
-  mc_string_set(&public_key,
-                (const uint16_t*) client->server->rsa_pub_asn1,
-                client->server->rsa_pub_asn1_len);
-  mc_string_set(&token,
-                client->verify_token,
-                ARRAY_SIZE(client->verify_token));
 
   /* Send encryption key request */
   r = mc_framer_enc_key_req(&client->framer,
@@ -181,6 +206,148 @@ int mc_client__send_enc_req(mc_client_t* client) {
     return r;
 
   return mc_framer_send(&client->framer, (uv_stream_t*) &client->tcp);
+}
+
+
+int mc_client__check_enc_res(mc_client_t* client, mc_frame_t* frame) {
+  int r;
+  int max_len;
+  unsigned char* out;
+  const EVP_CIPHER* cipher;
+
+  max_len = RSA_size(client->server->rsa);
+  out = malloc(max_len);
+  if (out == NULL)
+    return -1;
+
+  r = RSA_private_decrypt(frame->body.enc_resp.token_len,
+                          frame->body.enc_resp.token,
+                          out,
+                          client->server->rsa,
+                          RSA_PKCS1_PADDING);
+  if (r < 0)
+    return r;
+
+  /* Verify that token is the same */
+  if (r != sizeof(client->verify_token))
+    return -1;
+  if (memcmp(out, client->verify_token, r) != 0)
+    return -1;
+
+  r = RSA_private_decrypt(frame->body.enc_resp.secret_len,
+                          frame->body.enc_resp.secret,
+                          out,
+                          client->server->rsa,
+                          RSA_PKCS1_PADDING);
+  if (r < 0)
+    return r;
+
+  client->secret = out;
+  client->secret_len = r;
+
+  /* Init AES keys */
+  switch (client->secret_len * 8) {
+    case 128:
+      cipher = EVP_aes_128_cfb8();
+      break;
+    case 192:
+      cipher = EVP_aes_192_cfb8();
+      break;
+    case 256:
+      cipher = EVP_aes_256_cfb8();
+      break;
+    default:
+      cipher = NULL;
+      break;
+  }
+  if (cipher == NULL)
+    return -1;
+  EVP_CIPHER_CTX_init(&client->aes_in);
+  EVP_CIPHER_CTX_init(&client->aes_out);
+
+  r = EVP_DecryptInit(&client->aes_in, cipher, client->secret, client->secret);
+  if (r != 1)
+    return -1;
+  r = EVP_EncryptInit(&client->aes_out, cipher, client->secret, client->secret);
+  if (r != 1)
+    return -1;
+
+  /* Send enc key response with empty payload */
+  r = mc_framer_enc_key_res(&client->framer, NULL, 0, NULL, 0);
+  if (r != 0)
+    return r;
+
+  r = mc_client__compute_api_hash(client);
+  if (r != 0)
+    return r;
+
+  return mc_framer_send(&client->framer, (uv_stream_t*) &client->tcp);
+}
+
+
+/* TODO(indutny): fix it */
+int mc_client__compute_api_hash(mc_client_t* client) {
+  int r;
+  unsigned int i;
+  unsigned int s;
+  unsigned int sign_change;
+  unsigned char hash_out[EVP_MAX_MD_SIZE];
+
+  EVP_MD_CTX sha;
+  EVP_MD_CTX_init(&sha);
+
+  r = EVP_DigestInit(&sha, EVP_sha1());
+  if (r != 1)
+    return -1;
+
+  r = EVP_DigestUpdate(&sha,
+                       client->server->ascii_server_id,
+                       sizeof(client->server->ascii_server_id));
+  if (r != 1)
+    goto final;
+
+  r = EVP_DigestUpdate(&sha, client->secret, client->secret_len);
+  if (r != 1)
+    goto final;
+
+  r = EVP_DigestUpdate(&sha,
+                       client->server->rsa_pub_asn1,
+                       client->server->rsa_pub_asn1_len);
+  if (r != 1)
+    goto final;
+
+  r = EVP_DigestFinal(&sha, hash_out, &s);
+  if (r != 1)
+    goto final;
+
+  assert(s > 0 && s <= sizeof(hash_out));
+
+  sign_change = (hash_out[0] & 0x80) != 0 ? 1 : 0;
+  if (sign_change)
+    client->api_hash[0] = '-';
+
+  /* Convert hash to ascii */
+  for (i = 0; i < s; i++) {
+    snprintf(client->api_hash + i * 2 + sign_change,
+             sizeof(client->api_hash) - i * 2 - sign_change,
+             "%02x",
+             sign_change ? (0xff ^ hash_out[i]) : hash_out[i]);
+  }
+  client->api_hash[s * 2 + sign_change] = 0;
+
+  /* Skip leading zeroes */
+  for (i = sign_change; i < s * 2 + sign_change; i++)
+    if (client->api_hash[i] != '0')
+      break;
+  if (i != sign_change) {
+    memmove(client->api_hash + sign_change,
+            client->api_hash + i,
+            s * 2 + sign_change - i + 1);
+  }
+
+final:
+  EVP_MD_CTX_cleanup(&sha);
+  return r == 1 ? 0 : -1;
 }
 
 
@@ -200,6 +367,10 @@ int mc_client__handle_handshake(mc_client_t* client, mc_frame_t* frame) {
       if (r != 0)
         return r;
 
+      client->ascii_username = mc_string_to_ascii(&client->username);
+      if (client->ascii_username == NULL)
+        return -1;
+
       r = mc_client__send_enc_req(client);
       if (r != 0)
         return r;
@@ -209,9 +380,10 @@ int mc_client__handle_handshake(mc_client_t* client, mc_frame_t* frame) {
     case kMCInHandshakeState:
       if (frame->type != kMCEncryptionResType)
         return -1;
-      // r = mc_framer_enc_key_res(client, frame);
+      r = mc_client__check_enc_res(client, frame);
       if (r != 0)
         return r;
+
       client->state = kMCLoginState;
       break;
     case kMCLoginState:
@@ -221,7 +393,7 @@ int mc_client__handle_handshake(mc_client_t* client, mc_frame_t* frame) {
       if (frame->body.client_status != kMCInitialSpawnStatus)
         return -1;
 
-      // r = mc_framer_login_req(client);
+      /* r = mc_framer_login_req(client); */
       if (r != 0)
         return r;
       client->state = kMCReadyState;

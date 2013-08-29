@@ -9,14 +9,14 @@
 
 #define GROW(framer, size) \
     do { \
-      r = mc_framer__check_grow(framer, size); \
+      r = mc_framer__check_grow((framer), (size)); \
       if (r != 0) \
         return r; \
     } while (0)
 
 #define WRITE(framer, type, v) \
     do { \
-      r = mc_framer__write_##type(framer, v); \
+      r = mc_framer__write_##type((framer), (v)); \
       if (r != 0) \
         return r; \
     } while (0)
@@ -24,7 +24,7 @@
 
 #define WRITE_RAW(framer, data, size) \
     do { \
-      r = mc_framer__write_raw(framer, data, size); \
+      r = mc_framer__write_raw((framer), (data), (size)); \
       if (r != 0) \
         return r; \
     } while (0)
@@ -45,7 +45,7 @@ static int mc_framer__write_u16(mc_framer_t* framer, uint16_t v);
 static int mc_framer__write_u32(mc_framer_t* framer, uint32_t v);
 static int mc_framer__write_string(mc_framer_t* framer, mc_string_t* str);
 static int mc_framer__write_raw(mc_framer_t* framer,
-                                unsigned char* data,
+                                const unsigned char* data,
                                 size_t size);
 
 static const int kFramerInitialLen = 1024;
@@ -76,7 +76,7 @@ int mc_framer_send(mc_framer_t* framer, uv_stream_t* stream) {
   uv_buf_t buf;
   char* data;
 
-  req = malloc(sizeof(*req) + framer->len);
+  req = malloc(sizeof(*req) + framer->offset);
   if (req == NULL)
     return -1;
 
@@ -153,7 +153,7 @@ int mc_framer__write_u32(mc_framer_t* framer, uint32_t v) {
 
 
 int mc_framer__write_raw(mc_framer_t* framer,
-                         unsigned char* data,
+                         const unsigned char* data,
                          size_t size) {
   int r;
 
@@ -172,7 +172,7 @@ int mc_framer__write_string(mc_framer_t* framer, mc_string_t* str) {
   len = str->len;
   GROW(framer, sizeof(len) + len * 2);
   WRITE(framer, u16, len);
-  WRITE_RAW(framer, (unsigned char*) str->data, len * 2);
+  WRITE_RAW(framer, (const unsigned char*) str->data, len * 2);
 
   return 0;
 }
@@ -180,9 +180,9 @@ int mc_framer__write_string(mc_framer_t* framer, mc_string_t* str) {
 
 int mc_framer_enc_key_req(mc_framer_t* framer,
                           mc_string_t* server_id,
-                          unsigned char* public_key,
+                          const unsigned char* public_key,
                           uint16_t public_key_len,
-                          unsigned char* token,
+                          const unsigned char* token,
                           uint16_t token_len) {
   int r;
 
@@ -198,12 +198,16 @@ int mc_framer_enc_key_req(mc_framer_t* framer,
 
 
 int mc_framer_enc_key_res(mc_framer_t* framer,
-                          mc_string_t* secret,
-                          mc_string_t* token_response) {
+                          const unsigned char* secret,
+                          uint16_t secret_len,
+                          const unsigned char* token,
+                          uint16_t token_len) {
   int r;
   WRITE(framer, u8, kMCEncryptionResType);
-  WRITE(framer, string, secret);
-  WRITE(framer, string, token_response);
+  WRITE(framer, u16, secret_len);
+  WRITE_RAW(framer, secret, secret_len);
+  WRITE(framer, u16, token_len);
+  WRITE_RAW(framer, token, token_len);
   return 0;
 }
 

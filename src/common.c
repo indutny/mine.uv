@@ -1,3 +1,4 @@
+#include <arpa/inet.h>  /* ntohs */
 #include <assert.h>  /* assert */
 #include <stdlib.h>  /* malloc */
 #include <string.h>  /* memcpy */
@@ -39,4 +40,35 @@ int mc_string_copy(mc_string_t* to, mc_string_t* from) {
   to->len = from->len;
 
   return 0;
+}
+
+
+char* mc_string_to_ascii(mc_string_t* str) {
+  unsigned char* result;
+  int i;
+  int j;
+  uint16_t c;
+
+  result = malloc(str->len + 1);
+  if (result == NULL)
+    return NULL;
+
+  for (i = 0, j = 0; i < str->len; i++) {
+    c = ntohs(str->data[i]);
+
+    /* Skip two units */
+    if (c == 0x0001) {
+      i++;
+      continue;
+    }
+
+    /* Check if character can be converted to ASCII */
+    if ((c & 0xFF80) != 0)
+      continue;
+    result[j++] = (unsigned char) c;
+  }
+  result[j] = 0;
+  assert(j <= str->len);
+
+  return (char*) result;
 }
