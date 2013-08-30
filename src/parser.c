@@ -143,6 +143,9 @@ int mc_parser__read_u64(mc_parser_t* p, uint64_t* out) {
 int mc_parser__read_float(mc_parser_t* p, float* out) {
   int r;
 
+  if (p->len < 4)
+    return 0;
+
   *out = *(float*) p->data;
   p->data += 4;
   p->offset += 4;
@@ -154,6 +157,9 @@ int mc_parser__read_float(mc_parser_t* p, float* out) {
 
 int mc_parser__read_double(mc_parser_t* p, double* out) {
   int r;
+
+  if (p->len < 8)
+    return 0;
 
   *out = *(double*) p->data;
   p->data += 8;

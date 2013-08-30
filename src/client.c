@@ -228,7 +228,8 @@ void mc_client__cycle(mc_client_t* client) {
 
     /* Advance parser */
     assert(offset <= len);
-    memmove(data, data + offset, len - offset);
+    if (offset != 0)
+      memmove(data, data + offset, len - offset);
     if (data == client->cleartext.data)
       client->cleartext.len -= offset;
     else
