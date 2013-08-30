@@ -386,6 +386,7 @@ int mc_client__check_enc_res(mc_client_t* client, mc_frame_t* frame) {
   if (r != 1)
     return -1;
 
+  /* TODO(indutny): Send verifying request to server */
   r = mc_client__compute_api_hash(client);
   if (r != 0)
     return r;
@@ -404,7 +405,6 @@ int mc_client__check_enc_res(mc_client_t* client, mc_frame_t* frame) {
 }
 
 
-/* TODO(indutny): fix it */
 int mc_client__compute_api_hash(mc_client_t* client) {
   int r;
   int i;
