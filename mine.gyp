@@ -16,6 +16,7 @@
       "src/parser.c",
       "src/server.c",
       "src/world.c",
+      "src/nbt.c",
     ],
   }]
 }
