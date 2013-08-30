@@ -25,12 +25,18 @@ typedef struct mc_parser_s mc_parser_t;
 static int mc_parser__read_u8(mc_parser_t* p, uint8_t* out);
 static int mc_parser__read_u16(mc_parser_t* p, uint16_t* out);
 static int mc_parser__read_u32(mc_parser_t* p, uint32_t* out);
+static int mc_parser__read_u64(mc_parser_t* p, uint64_t* out);
+static int mc_parser__read_float(mc_parser_t* p, float* out);
+static int mc_parser__read_double(mc_parser_t* p, double* out);
 static int mc_parser__read_string(mc_parser_t* p, mc_string_t* str);
 static int mc_parser__read_raw(mc_parser_t* p,
                                unsigned char** out,
                                size_t size);
 static int mc_parser__parse_handshake(mc_parser_t* p, mc_frame_t* frame);
+static int mc_parser__parse_pos_and_look(mc_parser_t* p, mc_frame_t* frame);
+static int mc_parser__parse_settings(mc_parser_t* p, mc_frame_t* frame);
 static int mc_parser__parse_enc_resp(mc_parser_t* p, mc_frame_t* frame);
+static int mc_parser__parse_plugin_msg(mc_parser_t* p, mc_frame_t* frame);
 
 struct mc_parser_s {
   const unsigned char* data;
@@ -58,12 +64,18 @@ int mc_parser_execute(uint8_t* data, ssize_t len, mc_frame_t* frame) {
       return parser.offset;
     case kMCHandshakeType:
       return mc_parser__parse_handshake(&parser, frame);
+    case kMCPosAndLook:
+      return mc_parser__parse_pos_and_look(&parser, frame);
+    case kMCClientSettings:
+      return mc_parser__parse_settings(&parser, frame);
     case kMCClientStatus:
       PARSE_READ(&parser, u8, &tmp);
       frame->body.client_status = (mc_client_status_t) tmp;
       return parser.offset;
     case kMCEncryptionResType:
       return mc_parser__parse_enc_resp(&parser, frame);
+    case kMCPluginMsg:
+      return mc_parser__parse_plugin_msg(&parser, frame);
     default:
       /* Unknown frame, or frame should be sent by server */
       return -1;
@@ -104,6 +116,45 @@ int mc_parser__read_u32(mc_parser_t* p, uint32_t* out) {
   p->len -= 4;
 
   return 1;
+}
+
+
+int mc_parser__read_u64(mc_parser_t* p, uint64_t* out) {
+  int r;
+  uint32_t hi;
+  uint32_t lo;
+  if (p->len < 8)
+    return 0;
+
+  PARSE_READ(p, u32, &hi);
+  PARSE_READ(p, u32, &lo);
+  *out = ((uint64_t) hi << 32) | lo;
+
+  return 1;
+}
+
+
+int mc_parser__read_float(mc_parser_t* p, float* out) {
+  int r;
+  uint32_t val;
+
+  PARSE_READ(p, u32, &val);
+
+  *out = (float) val;
+
+  return r;
+}
+
+
+int mc_parser__read_double(mc_parser_t* p, double* out) {
+  int r;
+  uint64_t val;
+
+  PARSE_READ(p, u64, &val);
+
+  *out = (double) val;
+
+  return r;
 }
 
 
@@ -156,6 +207,40 @@ int mc_parser__parse_handshake(mc_parser_t* p, mc_frame_t* frame) {
 }
 
 
+int mc_parser__parse_pos_and_look(mc_parser_t* p, mc_frame_t* frame) {
+  int r;
+
+  if (p->len < 42)
+    return 0;
+
+  PARSE_READ(p, double, &frame->body.pos_and_look.x);
+  PARSE_READ(p, double, &frame->body.pos_and_look.y);
+  PARSE_READ(p, double, &frame->body.pos_and_look.stance);
+  PARSE_READ(p, double, &frame->body.pos_and_look.z);
+  PARSE_READ(p, float, &frame->body.pos_and_look.yaw);
+  PARSE_READ(p, float, &frame->body.pos_and_look.pitch);
+  PARSE_READ(p, u8, &frame->body.pos_and_look.on_ground);
+
+  return p->offset;
+}
+
+
+int mc_parser__parse_settings(mc_parser_t* p, mc_frame_t* frame) {
+  int r;
+
+  if (p->len < 7)
+    return 0;
+
+  PARSE_READ(p, string, &frame->body.settings.locale);
+  PARSE_READ(p, u8, &frame->body.settings.view_distance);
+  PARSE_READ(p, u8, &frame->body.settings.chat_flags);
+  PARSE_READ(p, u8, &frame->body.settings.difficulty);
+  PARSE_READ(p, u8, &frame->body.settings.show_cape);
+
+  return p->offset;
+}
+
+
 int mc_parser__parse_enc_resp(mc_parser_t* p, mc_frame_t* frame) {
   int r;
 
@@ -170,6 +255,22 @@ int mc_parser__parse_enc_resp(mc_parser_t* p, mc_frame_t* frame) {
   PARSE_READ_RAW(p,
                  &frame->body.enc_resp.token,
                  frame->body.enc_resp.token_len);
+
+  return p->offset;
+}
+
+
+int mc_parser__parse_plugin_msg(mc_parser_t* p, mc_frame_t* frame) {
+  int r;
+
+  if (p->len < 5)
+    return 0;
+
+  PARSE_READ(p, string, &frame->body.plugin_msg.channel);
+  PARSE_READ(p, u16, &frame->body.plugin_msg.msg_len);
+  PARSE_READ_RAW(p,
+                 &frame->body.plugin_msg.msg,
+                 frame->body.plugin_msg.msg_len);
 
   return p->offset;
 }

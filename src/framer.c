@@ -6,6 +6,7 @@
 #include "uv.h"  /* uv_write */
 #include "common.h"  /* mc_frame_t */
 #include "common-private.h"  /* container_of */
+#include "openssl/evp.h"  /* EVP_* */
 
 #define GROW(framer, size) \
     do { \
@@ -57,6 +58,7 @@ int mc_framer_init(mc_framer_t* framer) {
     return -1;
   framer->offset = 0;
   framer->len = kFramerInitialLen;
+  framer->aes = NULL;
 
   return 0;
 }
@@ -67,23 +69,51 @@ void mc_framer_destroy(mc_framer_t* framer) {
   framer->data = NULL;
   framer->offset = 0;
   framer->len = 0;
+  framer->aes = NULL;
+}
+
+
+void mc_framer_use_aes(mc_framer_t* framer, EVP_CIPHER_CTX* aes) {
+  framer->aes = aes;
 }
 
 
 int mc_framer_send(mc_framer_t* framer, uv_stream_t* stream) {
   int r;
+  int aes_len;
   mc_framer__req_t* req;
   uv_buf_t buf;
   char* data;
+  int packet_len;
 
-  req = malloc(sizeof(*req) + framer->offset);
+  packet_len = framer->offset;
+
+  /* Account space for possible AES padding */
+  if (framer->aes != NULL)
+    packet_len += EVP_CIPHER_CTX_block_size(framer->aes) - 1;
+
+  req = malloc(sizeof(*req) + packet_len);
   if (req == NULL)
     return -1;
 
-  req->len = framer->offset;
+  req->len = packet_len;
 
   data = ((char*) req) + sizeof(*req);
-  memcpy(data, framer->data, req->len);
+  if (framer->aes == NULL) {
+    memcpy(data, framer->data, req->len);
+  } else {
+    aes_len = req->len;
+    r = EVP_EncryptUpdate(framer->aes,
+                          (unsigned char*) data,
+                          &aes_len,
+                          framer->data,
+                          framer->offset);
+    if (r != 1) {
+      free(req);
+      return -1;
+    }
+    req->len = aes_len;
+  }
 
   buf = uv_buf_init(data, req->len);
   r = uv_write(&req->req, stream, &buf, 1, mc_framer__after_send);
@@ -219,5 +249,14 @@ int mc_framer_login_req(mc_framer_t* framer,
                         int8_t dimension,
                         uint8_t difficulty,
                         uint8_t max_players) {
+  int r;
+  WRITE(framer, u8, kMCLoginReqType);
+  WRITE(framer, u32, entity_id);
+  WRITE(framer, string, level_type);
+  WRITE(framer, u8, mode);
+  WRITE(framer, u8, (uint8_t) dimension);
+  WRITE(framer, u8, difficulty);
+  WRITE(framer, u8, 0);
+  WRITE(framer, u8, max_players);
   return 0;
 }

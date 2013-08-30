@@ -86,13 +86,22 @@ uv_buf_t mc_client__on_alloc(uv_handle_t* handle, size_t suggested_size) {
 
 
 void mc_client__on_read(uv_stream_t* stream, ssize_t nread, uv_buf_t buf) {
+  int r;
   mc_client_t* client;
 
   client = stream->data;
 
   if (nread > 0) {
     client->encrypted.len += nread;
+
     mc_client__cycle(client);
+
+    /* Buffer is full, stop reading unitl processing */
+    if (client->encrypted.len == sizeof(client->encrypted.data)) {
+      r = uv_read_stop(stream);
+      if (r != 0)
+        mc_client_destroy(client);
+    }
 
     return;
   } else {
@@ -108,21 +117,24 @@ void mc_client__on_read(uv_stream_t* stream, ssize_t nread, uv_buf_t buf) {
  */
 void mc_client__cycle(mc_client_t* client) {
   uint8_t* data;
-  int block_size;
+  size_t block_size;
   int avail;
+  int is_full;
   ssize_t r;
   ssize_t offset;
   ssize_t len;
   mc_frame_t frame;
 
+  is_full = client->encrypted.len == sizeof(client->encrypted.data);
+
   while (client->encrypted.len != 0 || client->cleartext.len != 0) {
     if (client->secret_len != 0) {
       /* If there's enough encrypted input, and enough space in cleartext */
       block_size = EVP_CIPHER_CTX_block_size(&client->aes_in);
-      while (client->encrypted.len >= block_size) {
+      if (client->encrypted.len >= block_size) {
         /* Get amount of data available for write in cleartext */
         avail = sizeof(client->cleartext.data) - client->cleartext.len;
-        if (avail < client->encrypted.len + block_size)
+        if ((size_t) avail < client->encrypted.len + block_size)
           break;
 
         r = EVP_DecryptUpdate(&client->aes_in,
@@ -131,11 +143,14 @@ void mc_client__cycle(mc_client_t* client) {
                               client->encrypted.data,
                               client->encrypted.len);
         if (r != 1)
-          return mc_client_destroy(client);
+          goto fatal;
         client->cleartext.len += avail;
         assert((size_t) client->cleartext.len <=
                sizeof(client->cleartext.data));
       }
+
+      /* All written */
+      client->encrypted.len = 0;
 
       data = client->cleartext.data;
       len = client->cleartext.len;
@@ -152,7 +167,7 @@ void mc_client__cycle(mc_client_t* client) {
 
     /* Parse error */
     if (offset < 0)
-      return mc_client_destroy(client);
+      goto fatal;
 
     /* Not enough data yet */
     if (offset == 0)
@@ -160,7 +175,7 @@ void mc_client__cycle(mc_client_t* client) {
 
     /* Malformed data */
     if (r < 0)
-      return mc_client_destroy(client);
+      goto fatal;
 
     /* Handle frame */
     if (client->state != kMCReadyState)
@@ -168,7 +183,7 @@ void mc_client__cycle(mc_client_t* client) {
     else
       r = mc_client__handle_frame(client, &frame);
     if (r != 0)
-      return mc_client_destroy(client);
+      goto fatal;
 
     /* Advance parser */
     assert(offset <= len);
@@ -178,6 +193,23 @@ void mc_client__cycle(mc_client_t* client) {
     else
       client->encrypted.len -= offset;
   }
+
+  /*
+   * If encrypted was full and not has some space inside -
+   * we can safely re-enable reading from socket
+   */
+  if (is_full && client->encrypted.len < sizeof(client->encrypted.data)) {
+    r = uv_read_start((uv_stream_t*) &client->tcp,
+                      mc_client__on_alloc,
+                      mc_client__on_read);
+    if (r != 0)
+      goto fatal;
+  }
+
+  return;
+
+fatal:
+  mc_client_destroy(client);
 }
 
 
@@ -281,7 +313,12 @@ int mc_client__check_enc_res(mc_client_t* client, mc_frame_t* frame) {
   if (r != 0)
     return r;
 
-  return mc_framer_send(&client->framer, (uv_stream_t*) &client->tcp);
+  r = mc_framer_send(&client->framer, (uv_stream_t*) &client->tcp);
+  if (r != 0)
+    return r;
+
+  mc_framer_use_aes(&client->framer, &client->aes_out);
+  return 0;
 }
 
 
@@ -390,6 +427,7 @@ int mc_client__handle_handshake(mc_client_t* client, mc_frame_t* frame) {
     case kMCInHandshakeState:
       if (frame->type != kMCEncryptionResType)
         return -1;
+
       r = mc_client__check_enc_res(client, frame);
       if (r != 0)
         return r;
@@ -403,9 +441,20 @@ int mc_client__handle_handshake(mc_client_t* client, mc_frame_t* frame) {
       if (frame->body.client_status != kMCInitialSpawnStatus)
         return -1;
 
-      /* r = mc_framer_login_req(client); */
+      r = mc_framer_login_req(&client->framer,
+                              1,
+                              &client->username,
+                              0,
+                              0,
+                              0,
+                              100);
       if (r != 0)
         return r;
+
+      r = mc_framer_send(&client->framer, (uv_stream_t*) &client->tcp);
+      if (r != 0)
+        return r;
+
       client->state = kMCReadyState;
       break;
     default:

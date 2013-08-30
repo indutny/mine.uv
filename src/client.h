@@ -26,12 +26,12 @@ enum mc_client__state_e {
 
 struct mc_client__enc_buf_s {
   uint8_t data[MC_MAX_ENC_BUF_SIZE];
-  ssize_t len;
+  size_t len;
 };
 
 struct mc_client__clear_buf_s {
   uint8_t data[MC_MAX_CLEAR_BUF_SIZE];
-  ssize_t len;
+  size_t len;
 };
 
 struct mc_client_s {

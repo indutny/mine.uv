@@ -11,9 +11,12 @@ typedef struct mc_string_s mc_string_t;
 
 enum mc_frame_type_e {
   kMCKeepAliveType = 0x00,
-  kMCLoginRequestType = 0x01,
+  kMCLoginReqType = 0x01,
   kMCHandshakeType = 0x02,
+  kMCPosAndLook = 0x0D,
+  kMCClientSettings = 0xCC,
   kMCClientStatus = 0xCD,
+  kMCPluginMsg = 0xFA,
   kMCEncryptionResType = 0xFC,
   kMCEncryptionReqType = 0xFD
 };
@@ -41,11 +44,32 @@ struct mc_frame_s {
       uint32_t port;
     } handshake;
     struct {
+      double x;
+      double y;
+      double stance;
+      double z;
+      float yaw;
+      float pitch;
+      uint8_t on_ground;
+    } pos_and_look;
+    struct {
+      mc_string_t locale;
+      uint8_t view_distance;
+      uint8_t chat_flags;
+      uint8_t difficulty;
+      uint8_t show_cape;
+    } settings;
+    struct {
       uint16_t secret_len;
       unsigned char* secret;
       uint16_t token_len;
       unsigned char* token;
     } enc_resp;
+    struct {
+      mc_string_t channel;
+      uint16_t msg_len;
+      unsigned char* msg;
+    } plugin_msg;
   } body;
 };
 

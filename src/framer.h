@@ -5,6 +5,7 @@
 
 #include <stdint.h>  /* uint8_t */
 #include "common.h"  /* mc_string_t */
+#include "openssl/evp.h"  /* EVP_CIPHER_CTX */
 
 typedef struct mc_framer_s mc_framer_t;
 
@@ -12,10 +13,14 @@ struct mc_framer_s {
   unsigned char* data;
   ssize_t offset;
   ssize_t len;
+  EVP_CIPHER_CTX* aes;
 };
 
 int mc_framer_init(mc_framer_t* framer);
 void mc_framer_destroy(mc_framer_t* framer);
+
+/* Start using encryption */
+void mc_framer_use_aes(mc_framer_t* framer, EVP_CIPHER_CTX* aes);
 
 /* Send all accumulated data */
 int mc_framer_send(mc_framer_t* framer, uv_stream_t* stream);
