@@ -36,9 +36,11 @@ static int mc_parser__read_raw(mc_parser_t* p,
                                size_t size);
 static int mc_parser__parse_login_req(mc_parser_t* p, mc_frame_t* frame);
 static int mc_parser__parse_handshake(mc_parser_t* p, mc_frame_t* frame);
+static int mc_parser__parse_use_entity(mc_parser_t* p, mc_frame_t* frame);
 static int mc_parser__parse_pos(mc_parser_t* p, mc_frame_t* frame);
 static int mc_parser__parse_look(mc_parser_t* p, mc_frame_t* frame);
 static int mc_parser__parse_pos_and_look(mc_parser_t* p, mc_frame_t* frame);
+static int mc_parser__parse_digging(mc_parser_t* p, mc_frame_t* frame);
 static int mc_parser__parse_settings(mc_parser_t* p, mc_frame_t* frame);
 static int mc_parser__parse_enc_resp(mc_parser_t* p, mc_frame_t* frame);
 static int mc_parser__parse_plugin_msg(mc_parser_t* p, mc_frame_t* frame);
@@ -70,12 +72,28 @@ int mc_parser_execute(uint8_t* data, ssize_t len, mc_frame_t* frame) {
       return mc_parser__parse_login_req(&parser, frame);
     case kMCHandshakeType:
       return mc_parser__parse_handshake(&parser, frame);
+    case kMCChatMsgType:
+      PARSE_READ(&parser, string, &frame->body.chat_msg);
+      return parser.offset;
+    case kMCUseEntityType:
+      return mc_parser__parse_use_entity(&parser, frame);
+    case kMCPlayerType:
+      PARSE_READ(&parser, u8, &frame->body.pos_and_look.on_ground);
+      frame->body.pos_and_look.x = 0;
+      frame->body.pos_and_look.y = 0;
+      frame->body.pos_and_look.z = 0;
+      frame->body.pos_and_look.stance = 0;
+      frame->body.pos_and_look.yaw = 0;
+      frame->body.pos_and_look.pitch = 0;
+      return parser.offset;
     case kMCPlayerPosType:
       return mc_parser__parse_pos(&parser, frame);
     case kMCPlayerLookType:
       return mc_parser__parse_look(&parser, frame);
     case kMCPosAndLookType:
       return mc_parser__parse_pos_and_look(&parser, frame);
+    case kMCDiggingType:
+      return mc_parser__parse_digging(&parser, frame);
     case kMCClientSettingsType:
       return mc_parser__parse_settings(&parser, frame);
     case kMCClientStatusType:
@@ -230,6 +248,18 @@ int mc_parser__parse_handshake(mc_parser_t* p, mc_frame_t* frame) {
 }
 
 
+int mc_parser__parse_use_entity(mc_parser_t* p, mc_frame_t* frame) {
+  if (p->len < 9)
+    return 0;
+
+  PARSE_READ(p, u32, &frame->body.use_entity.user);
+  PARSE_READ(p, u32, &frame->body.use_entity.target);
+  PARSE_READ(p, u8, &frame->body.use_entity.button);
+
+  return p->offset;
+}
+
+
 int mc_parser__parse_pos(mc_parser_t* p, mc_frame_t* frame) {
   if (p->len < 33)
     return 0;
@@ -275,6 +305,24 @@ int mc_parser__parse_pos_and_look(mc_parser_t* p, mc_frame_t* frame) {
   PARSE_READ(p, float, &frame->body.pos_and_look.yaw);
   PARSE_READ(p, float, &frame->body.pos_and_look.pitch);
   PARSE_READ(p, u8, &frame->body.pos_and_look.on_ground);
+
+  return p->offset;
+}
+
+
+int mc_parser__parse_digging(mc_parser_t* p, mc_frame_t* frame) {
+  uint8_t tmp;
+
+  if (p->len < 11)
+    return 0;
+
+  PARSE_READ(p, u8, &tmp);
+  frame->body.digging.status = (mc_digging_status_t) tmp;
+  PARSE_READ(p, u32, &frame->body.digging.x);
+  PARSE_READ(p, u8, &frame->body.digging.y);
+  PARSE_READ(p, u32, &frame->body.digging.z);
+  PARSE_READ(p, u8, &tmp);
+  frame->body.digging.face = (mc_face_t) tmp;
 
   return p->offset;
 }

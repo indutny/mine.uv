@@ -6,6 +6,8 @@
 
 typedef enum mc_frame_type_e mc_frame_type_t;
 typedef enum mc_client_status_e mc_client_status_t;
+typedef enum mc_digging_status_e mc_digging_status_t;
+typedef enum mc_face_e mc_face_t;
 typedef struct mc_frame_s mc_frame_t;
 typedef struct mc_string_s mc_string_t;
 
@@ -13,9 +15,18 @@ enum mc_frame_type_e {
   kMCKeepAliveType = 0x00,
   kMCLoginReqType = 0x01,
   kMCHandshakeType = 0x02,
+  kMCChatMsgType = 0x03,
+  kMCTimeUpdateType = 0x04,
+  kMCEntityEquipmentType = 0x05,
+  kMCSpawnPositionType = 0x06,
+  kMCUseEntityType = 0x07,
+  kMCUpdateHealthType = 0x08,
+  kMCRespawnType = 0x09,
+  kMCPlayerType = 0x0A,
   kMCPlayerPosType = 0x0B,
   kMCPlayerLookType= 0x0C,
   kMCPosAndLookType = 0x0D,
+  kMCDiggingType = 0x0E,
   kMCClientSettingsType = 0xCC,
   kMCClientStatusType = 0xCD,
   kMCPluginMsgType = 0xFA,
@@ -25,8 +36,26 @@ enum mc_frame_type_e {
 };
 
 enum mc_client_status_e {
-  kMCInitialSpawnStatus,
-  kMCRespawnStatus
+  kMCInitialSpawnStatus = 0,
+  kMCRespawnStatus = 1
+};
+
+enum mc_digging_status_e {
+  kMCStartedDigging = 0,
+  kMCCancelledDigging = 1,
+  kMCFinishedDigging = 2,
+  kMCDropItemStack = 3,
+  kMCDropItem = 4,
+  kMCShootArrow = 5
+};
+
+enum mc_face_e {
+  kMCFaceNY = 0,
+  kMCFacePY = 1,
+  kMCFaceNZ = 2,
+  kMCFacePZ = 3,
+  kMCFaceNX = 4,
+  kMCFacePX = 5
 };
 
 struct mc_string_s {
@@ -54,6 +83,12 @@ struct mc_frame_s {
       mc_string_t host;
       uint32_t port;
     } handshake;
+    mc_string_t chat_msg;
+    struct {
+      uint32_t user;
+      uint32_t target;
+      uint8_t button;
+    } use_entity;
     struct {
       double x;
       double y;
@@ -63,6 +98,13 @@ struct mc_frame_s {
       float pitch;
       uint8_t on_ground;
     } pos_and_look;
+    struct {
+      mc_digging_status_t status;
+      uint32_t x;
+      uint8_t y;
+      uint32_t z;
+      mc_face_t face;
+    } digging;
     struct {
       mc_string_t locale;
       uint8_t view_distance;
