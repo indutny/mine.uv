@@ -9,6 +9,7 @@ typedef struct mc_server_s mc_server_t;
 
 struct mc_config_s {
   int port;
+  int max_connections;
 };
 
 struct mc_server_s {
@@ -16,6 +17,8 @@ struct mc_server_s {
   uv_tcp_t tcp;
 
   int version;
+  int connections;
+  int max_connections;
 
   /* RSA key */
   RSA* rsa;

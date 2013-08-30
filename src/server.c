@@ -53,6 +53,8 @@ int mc_server_init(mc_server_t* server, mc_config_t* config) {
     goto fatal;
 
   server->version = 74;  /* 1.6.2 */
+  server->connections = 0;
+  server->max_connections = config->max_connections;
 
   return 0;
 

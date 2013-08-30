@@ -86,13 +86,17 @@ void mc_client_destroy(mc_client_t* client, const char* reason) {
   /* Regardless of config, stop reading data */
   uv_read_stop((uv_stream_t*) &client->tcp);
 
+  /* Kick client gracefully */
+  if (reason != NULL && mc_client__send_kick(client, reason) == 0)
+    return;
+
   if (client->destroyed)
     return;
   client->destroyed = 1;
 
-  /* Kick client gracefully */
-  if (reason != NULL && mc_client__send_kick(client, reason) == 0)
-    return;
+  /* Decrement number of connections */
+  if (client->state == kMCReadyState)
+    client->server->connections--;
 
   uv_close((uv_handle_t*) &client->tcp, mc_client__on_close);
   mc_framer_destroy(&client->framer);
@@ -219,7 +223,10 @@ void mc_client__cycle(mc_client_t* client) {
       break;
 
     /* Handle frame */
-    if (client->state != kMCReadyState)
+    if (frame.type == kMCServerListPingType || frame.type == kMCPluginMsgType)
+      /* Just ignore */
+      r = 0;
+    else if (client->state != kMCReadyState)
       r = mc_client__handle_handshake(client, &frame);
     else
       r = mc_client__handle_frame(client, &frame);
@@ -525,6 +532,13 @@ int mc_client__handle_handshake(mc_client_t* client, mc_frame_t* frame) {
       if (r != 0)
         return r;
 
+      if (client->server->connections != 0 &&
+          client->server->connections == client->server->max_connections) {
+        mc_client_destroy(client, "Maximum connections limit reached");
+        return -1;
+      }
+
+      client->server->connections++;
       client->state = kMCReadyState;
       break;
     default:
