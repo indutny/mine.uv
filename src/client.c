@@ -504,7 +504,7 @@ int mc_client__handle_handshake(mc_client_t* client, mc_frame_t* frame) {
       client->state = kMCLoginState;
       break;
     case kMCLoginState:
-      if (frame->type != kMCClientStatus)
+      if (frame->type != kMCClientStatusType)
         return -1;
 
       if (frame->body.client_status != kMCInitialSpawnStatus)

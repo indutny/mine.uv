@@ -33,6 +33,8 @@ static int mc_parser__read_raw(mc_parser_t* p,
                                unsigned char** out,
                                size_t size);
 static int mc_parser__parse_handshake(mc_parser_t* p, mc_frame_t* frame);
+static int mc_parser__parse_pos(mc_parser_t* p, mc_frame_t* frame);
+static int mc_parser__parse_look(mc_parser_t* p, mc_frame_t* frame);
 static int mc_parser__parse_pos_and_look(mc_parser_t* p, mc_frame_t* frame);
 static int mc_parser__parse_settings(mc_parser_t* p, mc_frame_t* frame);
 static int mc_parser__parse_enc_resp(mc_parser_t* p, mc_frame_t* frame);
@@ -64,17 +66,21 @@ int mc_parser_execute(uint8_t* data, ssize_t len, mc_frame_t* frame) {
       return parser.offset;
     case kMCHandshakeType:
       return mc_parser__parse_handshake(&parser, frame);
-    case kMCPosAndLook:
+    case kMCPlayerPosType:
+      return mc_parser__parse_pos(&parser, frame);
+    case kMCPlayerLookType:
+      return mc_parser__parse_look(&parser, frame);
+    case kMCPosAndLookType:
       return mc_parser__parse_pos_and_look(&parser, frame);
-    case kMCClientSettings:
+    case kMCClientSettingsType:
       return mc_parser__parse_settings(&parser, frame);
-    case kMCClientStatus:
+    case kMCClientStatusType:
       PARSE_READ(&parser, u8, &tmp);
       frame->body.client_status = (mc_client_status_t) tmp;
       return parser.offset;
     case kMCEncryptionResType:
       return mc_parser__parse_enc_resp(&parser, frame);
-    case kMCPluginMsg:
+    case kMCPluginMsgType:
       return mc_parser__parse_plugin_msg(&parser, frame);
     default:
       /* Unknown frame, or frame should be sent by server */
@@ -202,6 +208,44 @@ int mc_parser__parse_handshake(mc_parser_t* p, mc_frame_t* frame) {
   PARSE_READ(p, string, &frame->body.handshake.username);
   PARSE_READ(p, string, &frame->body.handshake.host);
   PARSE_READ(p, u32, &frame->body.handshake.port);
+
+  return p->offset;
+}
+
+
+int mc_parser__parse_pos(mc_parser_t* p, mc_frame_t* frame) {
+  int r;
+
+  if (p->len < 33)
+    return 0;
+
+  PARSE_READ(p, double, &frame->body.pos_and_look.x);
+  PARSE_READ(p, double, &frame->body.pos_and_look.y);
+  PARSE_READ(p, double, &frame->body.pos_and_look.stance);
+  PARSE_READ(p, double, &frame->body.pos_and_look.z);
+  PARSE_READ(p, u8, &frame->body.pos_and_look.on_ground);
+
+  frame->body.pos_and_look.yaw = 0;
+  frame->body.pos_and_look.pitch = 0;
+
+  return p->offset;
+}
+
+
+int mc_parser__parse_look(mc_parser_t* p, mc_frame_t* frame) {
+  int r;
+
+  if (p->len < 9)
+    return 0;
+
+  PARSE_READ(p, float, &frame->body.pos_and_look.yaw);
+  PARSE_READ(p, float, &frame->body.pos_and_look.pitch);
+  PARSE_READ(p, u8, &frame->body.pos_and_look.on_ground);
+
+  frame->body.pos_and_look.x = 0;
+  frame->body.pos_and_look.y = 0;
+  frame->body.pos_and_look.z = 0;
+  frame->body.pos_and_look.stance = 0;
 
   return p->offset;
 }
