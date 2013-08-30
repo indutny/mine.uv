@@ -204,8 +204,15 @@ void mc_client__cycle(mc_client_t* client) {
     offset = mc_parser_execute(data, len, &frame);
 
     /* Parse error */
-    if (offset < 0)
-      return mc_client_destroy(client, "Failed to parse frame");
+    if (offset < 0) {
+      char err[128];
+      if (len >= 1) {
+        snprintf(err, sizeof(err), "Failed to parse frame: %02x", data[0]);
+        return mc_client_destroy(client, err);
+      } else {
+        return mc_client_destroy(client, "Frame OOB");
+      }
+    }
 
     /* Not enough data yet */
     if (offset == 0)
