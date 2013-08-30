@@ -13,7 +13,7 @@ int main() {
   /* Start server */
   memset(&config, 0, sizeof(config));
   config.port = 25565;
-  config.max_connections = 1000;
+  config.max_clients = 1000;
 
   r = mc_server_init(&server, &config);
   if (r != 0) {

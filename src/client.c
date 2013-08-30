@@ -97,7 +97,7 @@ void mc_client_destroy(mc_client_t* client, const char* reason) {
 
   /* Decrement number of connections */
   if (client->state == kMCReadyState)
-    client->server->connections--;
+    client->server->clients--;
 
   uv_close((uv_handle_t*) &client->tcp, mc_client__on_close);
   mc_framer_destroy(&client->framer);
@@ -537,13 +537,13 @@ int mc_client__handle_handshake(mc_client_t* client, mc_frame_t* frame) {
       if (r != 0)
         return r;
 
-      if (client->server->connections != 0 &&
-          client->server->connections == client->server->max_connections) {
+      if (client->server->clients != 0 &&
+          client->server->clients == client->server->config.max_clients) {
         mc_client_destroy(client, "Maximum connections limit reached");
         return -1;
       }
 
-      client->server->connections++;
+      client->server->clients++;
       client->state = kMCReadyState;
       break;
     default:

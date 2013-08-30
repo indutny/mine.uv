@@ -12,8 +12,9 @@ typedef struct mc_config_s mc_config_t;
 typedef struct mc_server_s mc_server_t;
 
 struct mc_config_s {
-  int port;
-  int max_connections;
+  int port;  /* TCP port on which it should listen */
+  int max_clients;
+  int client_timeout;  /* in seconds, activates if any packet hasn't arrived */
 };
 
 struct mc_server_s {
@@ -21,8 +22,8 @@ struct mc_server_s {
   struct uv_tcp_s* tcp;
 
   int version;
-  int connections;
-  int max_connections;
+  int clients;
+  mc_config_t config;
 
   /* RSA key */
   struct rsa_st* rsa;
