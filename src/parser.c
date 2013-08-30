@@ -136,11 +136,11 @@ int mc_parser__read_u64(mc_parser_t* p, uint64_t* out) {
 
 int mc_parser__read_float(mc_parser_t* p, float* out) {
   int r;
-  uint32_t val;
 
-  PARSE_READ(p, u32, &val);
-
-  *out = (float) val;
+  *out = *(float*) p->data;
+  p->data += 4;
+  p->offset += 4;
+  p->len -= 4;
 
   return r;
 }
@@ -148,11 +148,11 @@ int mc_parser__read_float(mc_parser_t* p, float* out) {
 
 int mc_parser__read_double(mc_parser_t* p, double* out) {
   int r;
-  uint64_t val;
 
-  PARSE_READ(p, u64, &val);
-
-  *out = (double) val;
+  *out = *(double*) p->data;
+  p->data += 8;
+  p->offset += 8;
+  p->len -= 8;
 
   return r;
 }
@@ -195,7 +195,7 @@ int mc_parser__read_raw(mc_parser_t* p, unsigned char** out, size_t size) {
 int mc_parser__parse_handshake(mc_parser_t* p, mc_frame_t* frame) {
   int r;
 
-  if (p->len < 10)
+  if (p->len < 9)
     return 0;
 
   PARSE_READ(p, u8, &frame->body.handshake.version);
@@ -210,7 +210,7 @@ int mc_parser__parse_handshake(mc_parser_t* p, mc_frame_t* frame) {
 int mc_parser__parse_pos_and_look(mc_parser_t* p, mc_frame_t* frame) {
   int r;
 
-  if (p->len < 42)
+  if (p->len < 41)
     return 0;
 
   PARSE_READ(p, double, &frame->body.pos_and_look.x);
@@ -228,7 +228,7 @@ int mc_parser__parse_pos_and_look(mc_parser_t* p, mc_frame_t* frame) {
 int mc_parser__parse_settings(mc_parser_t* p, mc_frame_t* frame) {
   int r;
 
-  if (p->len < 7)
+  if (p->len < 6)
     return 0;
 
   PARSE_READ(p, string, &frame->body.settings.locale);
@@ -263,7 +263,7 @@ int mc_parser__parse_enc_resp(mc_parser_t* p, mc_frame_t* frame) {
 int mc_parser__parse_plugin_msg(mc_parser_t* p, mc_frame_t* frame) {
   int r;
 
-  if (p->len < 5)
+  if (p->len < 4)
     return 0;
 
   PARSE_READ(p, string, &frame->body.plugin_msg.channel);
