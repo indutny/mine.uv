@@ -27,7 +27,7 @@ static int mc_client__compute_api_hash(mc_client_t* client);
 static int mc_client__handle_handshake(mc_client_t* client, mc_frame_t* frame);
 static int mc_client__handle_frame(mc_client_t* client, mc_frame_t* frame);
 
-mc_client_t* mc_client_init(mc_server_t* server) {
+mc_client_t* mc_client_new(mc_server_t* server) {
   int r;
   mc_client_t* client;
 

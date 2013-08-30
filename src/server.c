@@ -142,5 +142,5 @@ void mc_server__on_connection(uv_stream_t* stream, int status) {
   server = container_of(stream, mc_server_t, tcp);
 
   if (status == 0)
-    mc_client_init(server);
+    mc_client_new(server);
 }

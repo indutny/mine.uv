@@ -59,7 +59,7 @@ struct mc_client_s {
   EVP_CIPHER_CTX aes_out;
 };
 
-mc_client_t* mc_client_init(mc_server_t* server);
+mc_client_t* mc_client_new(mc_server_t* server);
 void mc_client_destroy(mc_client_t* client, const char* reason);
 
 #undef MC_MAX_BUF_SIZE
