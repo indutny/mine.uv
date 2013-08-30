@@ -10,6 +10,7 @@
 
 #define GROW(framer, size) \
     do { \
+      int r; \
       r = mc_framer__check_grow((framer), (size)); \
       if (r != 0) \
         return r; \
@@ -17,6 +18,7 @@
 
 #define WRITE(framer, type, v) \
     do { \
+      int r; \
       r = mc_framer__write_##type((framer), (v)); \
       if (r != 0) \
         return r; \
@@ -25,6 +27,7 @@
 
 #define WRITE_RAW(framer, data, size) \
     do { \
+      int r; \
       r = mc_framer__write_raw((framer), (data), (size)); \
       if (r != 0) \
         return r; \
@@ -157,7 +160,6 @@ int mc_framer__check_grow(mc_framer_t* framer, ssize_t size) {
 
 
 int mc_framer__write_u8(mc_framer_t* framer, uint8_t v) {
-  int r;
   GROW(framer, sizeof(v));
 
   framer->data[framer->offset] = v;
@@ -168,7 +170,6 @@ int mc_framer__write_u8(mc_framer_t* framer, uint8_t v) {
 
 
 int mc_framer__write_u16(mc_framer_t* framer, uint16_t v) {
-  int r;
   GROW(framer, sizeof(v));
 
   *(uint16_t*) (framer->data + framer->offset) = htons(v);
@@ -179,7 +180,6 @@ int mc_framer__write_u16(mc_framer_t* framer, uint16_t v) {
 
 
 int mc_framer__write_u32(mc_framer_t* framer, uint32_t v) {
-  int r;
   GROW(framer, sizeof(v));
 
   *(uint32_t*) (framer->data + framer->offset) = htonl(v);
@@ -192,8 +192,6 @@ int mc_framer__write_u32(mc_framer_t* framer, uint32_t v) {
 int mc_framer__write_raw(mc_framer_t* framer,
                          const unsigned char* data,
                          size_t size) {
-  int r;
-
   GROW(framer, size);
   memcpy(framer->data + framer->offset, data, size);
   framer->offset += size;
@@ -203,7 +201,6 @@ int mc_framer__write_raw(mc_framer_t* framer,
 
 
 int mc_framer__write_string(mc_framer_t* framer, mc_string_t* str) {
-  int r;
   uint16_t len;
 
   len = str->len;
@@ -221,8 +218,6 @@ int mc_framer_enc_key_req(mc_framer_t* framer,
                           uint16_t public_key_len,
                           const unsigned char* token,
                           uint16_t token_len) {
-  int r;
-
   WRITE(framer, u8, kMCEncryptionReqType);
   WRITE(framer, string, server_id);
   WRITE(framer, u16, public_key_len);
@@ -239,8 +234,6 @@ int mc_framer_enc_key_res(mc_framer_t* framer,
                           uint16_t secret_len,
                           const unsigned char* token,
                           uint16_t token_len) {
-  int r;
-
   WRITE(framer, u8, kMCEncryptionResType);
   WRITE(framer, u16, secret_len);
   WRITE_RAW(framer, secret, secret_len);
@@ -258,8 +251,6 @@ int mc_framer_login_req(mc_framer_t* framer,
                         int8_t dimension,
                         uint8_t difficulty,
                         uint8_t max_players) {
-  int r;
-
   WRITE(framer, u8, kMCLoginReqType);
   WRITE(framer, u32, entity_id);
   WRITE(framer, string, level_type);
@@ -274,8 +265,6 @@ int mc_framer_login_req(mc_framer_t* framer,
 
 
 int mc_framer_kick(mc_framer_t* framer, mc_string_t* reason) {
-  int r;
-
   WRITE(framer, u8, kMCKickType);
   WRITE(framer, string, reason);
 
