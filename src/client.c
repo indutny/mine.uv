@@ -445,7 +445,7 @@ int mc_client__compute_api_hash(mc_client_t* client) {
   api_hash = client->api_hash;
   sign_change = hash_out[0] >= 0x80 ? 1 : 0;
 
-  // Change sign and add `1`
+  /* Change sign and add `1` */
   if (sign_change) {
     api_hash[0] = '-';
     api_hash++;
