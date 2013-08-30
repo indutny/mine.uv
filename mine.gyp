@@ -5,6 +5,7 @@
     "dependencies": [
       "deps/uv/uv.gyp:libuv",
       "deps/openssl/openssl.gyp:openssl",
+      "deps/zlib/zlib.gyp:zlib",
     ],
     "sources": [
       "src/main.c",
@@ -14,6 +15,7 @@
       "src/framer.c",
       "src/parser.c",
       "src/server.c",
+      "src/world.c",
     ],
   }]
 }
