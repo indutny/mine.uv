@@ -35,6 +35,7 @@ static int mc_parser__read_slot(mc_parser_t* p, mc_slot_t* slot);
 static int mc_parser__read_raw(mc_parser_t* p,
                                unsigned char** out,
                                size_t size);
+
 static int mc_parser__parse_login_req(mc_parser_t* p, mc_frame_t* frame);
 static int mc_parser__parse_handshake(mc_parser_t* p, mc_frame_t* frame);
 static int mc_parser__parse_use_entity(mc_parser_t* p, mc_frame_t* frame);
@@ -43,6 +44,12 @@ static int mc_parser__parse_look(mc_parser_t* p, mc_frame_t* frame);
 static int mc_parser__parse_pos_and_look(mc_parser_t* p, mc_frame_t* frame);
 static int mc_parser__parse_digging(mc_parser_t* p, mc_frame_t* frame);
 static int mc_parser__parse_block_placement(mc_parser_t* p, mc_frame_t* frame);
+static int mc_parser__parse_steer_vehicle(mc_parser_t* p, mc_frame_t* frame);
+static int mc_parser__parse_click_window(mc_parser_t* p, mc_frame_t* frame);
+static int mc_parser__parse_confirm_transaction(mc_parser_t* p,
+                                                mc_frame_t* frame);
+static int mc_parser__parse_update_sign(mc_parser_t* p, mc_frame_t* frame);
+static int mc_parser__parse_abilities(mc_parser_t* p, mc_frame_t* frame);
 static int mc_parser__parse_settings(mc_parser_t* p, mc_frame_t* frame);
 static int mc_parser__parse_enc_resp(mc_parser_t* p, mc_frame_t* frame);
 static int mc_parser__parse_plugin_msg(mc_parser_t* p, mc_frame_t* frame);
@@ -103,6 +110,45 @@ int mc_parser_execute(uint8_t* data, ssize_t len, mc_frame_t* frame) {
       if (frame->body.held_item_change.slot_id > 8)
         return -1;
       break;
+    case kMCAnimationType:
+      PARSE_READ(&parser, u32, &frame->body.animation.entity_id);
+      PARSE_READ(&parser, u8, &tmp);
+      frame->body.animation.kind = (mc_animation_t) tmp;
+      break;
+    case kMCEntityActionType:
+      PARSE_READ(&parser, u32, &frame->body.entity_action.entity_id);
+      PARSE_READ(&parser, u8, &tmp);
+      frame->body.entity_action.action = (mc_entity_action_t) tmp;
+      PARSE_READ(&parser, u32, &frame->body.entity_action.boost);
+      if (frame->body.entity_action.boost > 100)
+        return -1;
+      break;
+    case kMCSteerVehicleType:
+      return mc_parser__parse_steer_vehicle(&parser, frame);
+    case kMCCloseWindowType:
+      PARSE_READ(&parser, u8, (uint8_t*) &frame->body.close_window);
+      break;
+    case kMCClickWindowType:
+      return mc_parser__parse_click_window(&parser, frame);
+    case kMCConfirmTransactionType:
+      return mc_parser__parse_confirm_transaction(&parser, frame);
+    case kMCCreativeInvActionType:
+      PARSE_READ(&parser, u8, (uint8_t*) &frame->body.creative_action.slot);
+      PARSE_READ(&parser, slot, &frame->body.creative_action.clicked_slot);
+      if (frame->body.creative_action.slot > 8)
+        return -1;
+      break;
+    case kMCEnchantItemType:
+      PARSE_READ(&parser, u8, (uint8_t*) &frame->body.enchant_item.window);
+      PARSE_READ(&parser, u8, (uint8_t*) &frame->body.enchant_item.enchantment);
+      break;
+    case kMCUpdateSignType:
+      return mc_parser__parse_update_sign(&parser, frame);
+    case kMCPlayerAbilitiesType:
+      return mc_parser__parse_abilities(&parser, frame);
+    case kMCTabCompleteType:
+      PARSE_READ(&parser, string, &frame->body.tab_complete);
+      break;
     case kMCClientSettingsType:
       return mc_parser__parse_settings(&parser, frame);
     case kMCClientStatusType:
@@ -113,6 +159,12 @@ int mc_parser_execute(uint8_t* data, ssize_t len, mc_frame_t* frame) {
       return mc_parser__parse_enc_resp(&parser, frame);
     case kMCPluginMsgType:
       return mc_parser__parse_plugin_msg(&parser, frame);
+    case kMCServerListPingType:
+      PARSE_READ(&parser, u8, (uint8_t*) &frame->body.server_list_ping);
+      break;
+    case kMCKickType:
+      PARSE_READ(&parser, string, &frame->body.kick);
+      break;
     default:
       /* Unknown frame, or frame should be sent by server */
       return -1;
@@ -384,6 +436,74 @@ int mc_parser__parse_block_placement(mc_parser_t* p, mc_frame_t* frame) {
       frame->body.block_placement.cursor_z > 16) {
     return -1;
   }
+
+  return p->offset;
+}
+
+
+int mc_parser__parse_steer_vehicle(mc_parser_t* p, mc_frame_t* frame) {
+  if (p->len < 10)
+    return 0;
+
+  PARSE_READ(p, float, &frame->body.steer_vehicle.sideways);
+  PARSE_READ(p, float, &frame->body.steer_vehicle.forward);
+  PARSE_READ(p, u8, &frame->body.steer_vehicle.jump);
+  PARSE_READ(p, u8, &frame->body.steer_vehicle.unmount);
+
+  return p->offset;
+}
+
+
+int mc_parser__parse_click_window(mc_parser_t* p, mc_frame_t* frame) {
+  if (p->len < 7)
+    return 0;
+
+  PARSE_READ(p, u8, (uint8_t*) &frame->body.click_window.window);
+  PARSE_READ(p, u16, &frame->body.click_window.slot);
+  PARSE_READ(p, u8, &frame->body.click_window.button);
+  PARSE_READ(p, u16, &frame->body.click_window.action_number);
+  PARSE_READ(p, u8, &frame->body.click_window.mode);
+  PARSE_READ(p, slot, &frame->body.click_window.clicked_item);
+
+  return p->offset;
+}
+
+
+int mc_parser__parse_confirm_transaction(mc_parser_t* p, mc_frame_t* frame) {
+  if (p->len < 4)
+    return 0;
+
+  PARSE_READ(p, u8, (uint8_t*) &frame->body.confirm_transaction.window);
+  PARSE_READ(p, u16, &frame->body.confirm_transaction.action_id);
+  PARSE_READ(p, u8, &frame->body.confirm_transaction.accepted);
+
+  return p->offset;
+}
+
+
+int mc_parser__parse_update_sign(mc_parser_t* p, mc_frame_t* frame) {
+  if (p->len < 10)
+    return 0;
+
+  PARSE_READ(p, u32, (uint32_t*) &frame->body.update_sign.x);
+  PARSE_READ(p, u16, (uint16_t*) &frame->body.update_sign.y);
+  PARSE_READ(p, u32, (uint32_t*) &frame->body.update_sign.z);
+  PARSE_READ(p, string, &frame->body.update_sign.lines[0]);
+  PARSE_READ(p, string, &frame->body.update_sign.lines[1]);
+  PARSE_READ(p, string, &frame->body.update_sign.lines[2]);
+  PARSE_READ(p, string, &frame->body.update_sign.lines[3]);
+
+  return p->offset;
+}
+
+
+int mc_parser__parse_abilities(mc_parser_t* p, mc_frame_t* frame) {
+  if (p->len < 9)
+    return 0;
+
+  PARSE_READ(p, u8, &frame->body.player_abilities.flags);
+  PARSE_READ(p, float, &frame->body.player_abilities.flying_speed);
+  PARSE_READ(p, float, &frame->body.player_abilities.walking_speed);
 
   return p->offset;
 }
