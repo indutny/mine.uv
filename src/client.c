@@ -230,8 +230,12 @@ void mc_client__cycle(mc_client_t* client) {
       r = mc_client__handle_handshake(client, &frame);
     else
       r = mc_client__handle_frame(client, &frame);
-    if (r != 0)
-      return mc_client_destroy(client, "Failed to handle frame");
+
+    if (r != 0) {
+      char err[128];
+      snprintf(err, sizeof(err), "Failed to handle frame: %02x", frame.type);
+      return mc_client_destroy(client, err);
+    }
 
     /* Advance parser */
     assert(offset <= len);
