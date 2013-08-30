@@ -18,7 +18,8 @@ enum mc_frame_type_e {
   kMCClientStatus = 0xCD,
   kMCPluginMsg = 0xFA,
   kMCEncryptionResType = 0xFC,
-  kMCEncryptionReqType = 0xFD
+  kMCEncryptionReqType = 0xFD,
+  kMCKickType = 0xFF
 };
 
 enum mc_client_status_e {
@@ -79,5 +80,6 @@ void mc_string_destroy(mc_string_t* str);
 void mc_string_set(mc_string_t* str, const uint16_t* data, int len);
 int mc_string_copy(mc_string_t* to, mc_string_t* from);
 char* mc_string_to_ascii(mc_string_t* str);
+int mc_string_from_ascii(mc_string_t* to, const char* from);
 
 #endif  /* SRC_COMMON_H_ */

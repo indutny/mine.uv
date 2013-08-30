@@ -72,3 +72,25 @@ char* mc_string_to_ascii(mc_string_t* str) {
 
   return (char*) result;
 }
+
+
+int mc_string_from_ascii(mc_string_t* to, const char* from) {
+  int i;
+  int len;
+  uint16_t* data;
+
+  assert(to->data == NULL);
+
+  len = strlen(from);
+  data = malloc(len * 2);
+  if (data == NULL)
+    return -1;
+
+  for (i = 0; i < len; i++)
+    data[i] = htons((unsigned char) from[i]);
+  to->data = data;
+  to->allocated = 1;
+  to->len = len;
+
+  return 0;
+}

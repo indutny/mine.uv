@@ -53,7 +53,6 @@ int mc_server_init(mc_server_t* server, mc_config_t* config) {
     goto fatal;
 
   server->version = 74;  /* 1.6.2 */
-  server->tcp.data = server;
 
   return 0;
 
@@ -136,40 +135,10 @@ void mc_server_destroy(mc_server_t* server) {
 
 
 void mc_server__on_connection(uv_stream_t* stream, int status) {
-  int r;
   mc_server_t* server;
-  mc_client_t* client;
 
-  server = stream->data;
+  server = container_of(stream, mc_server_t, tcp);
 
-  client = malloc(sizeof(*client));
-  if (client == NULL)
-    return;
-
-  r = uv_tcp_init(server->loop, &client->tcp);
-  if (r != 0)
-    goto fatal;
-
-  /* Do not use Nagle algorithm */
-  r = uv_tcp_nodelay(&client->tcp, 1);
-  if (r != 0)
-    goto fatal;
-
-  r = uv_accept(stream, (uv_stream_t*) &client->tcp);
-  if (r != 0)
-    goto fatal;
-
-  r = mc_client_init(server, client);
-  if (r != 0)
-    goto client_init_failed;
-
-  return;
-
-client_init_failed:
-  mc_client_destroy(client);
-  return;
-
-fatal:
-  free(client);
-  return;
+  if (status == 0)
+    mc_client_init(server);
 }

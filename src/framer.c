@@ -34,6 +34,8 @@ typedef struct mc_framer__req_s mc_framer__req_t;
 
 struct mc_framer__req_s {
   uv_write_t req;
+  mc_framer_t* framer;
+  mc_framer_send_cb_t cb;
 
   /* Not really necessary, but might be useful for debugging */
   ssize_t len;
@@ -78,7 +80,9 @@ void mc_framer_use_aes(mc_framer_t* framer, EVP_CIPHER_CTX* aes) {
 }
 
 
-int mc_framer_send(mc_framer_t* framer, uv_stream_t* stream) {
+int mc_framer_send(mc_framer_t* framer,
+                   uv_stream_t* stream,
+                   mc_framer_send_cb_t cb) {
   int r;
   int aes_len;
   mc_framer__req_t* req;
@@ -96,6 +100,8 @@ int mc_framer_send(mc_framer_t* framer, uv_stream_t* stream) {
   if (req == NULL)
     return -1;
 
+  req->framer = framer;
+  req->cb = cb;
   req->len = packet_len;
 
   data = ((char*) req) + sizeof(*req);
@@ -129,9 +135,10 @@ void mc_framer__after_send(uv_write_t* req, int status) {
   mc_framer__req_t* freq;
 
   freq = container_of(req, mc_framer__req_t, req);
-  free(freq);
+  if (freq->cb != NULL)
+    freq->cb(freq->framer, status);
 
-  /* TODO(indutny): consider invoking callback here */
+  free(freq);
 }
 
 
@@ -233,11 +240,13 @@ int mc_framer_enc_key_res(mc_framer_t* framer,
                           const unsigned char* token,
                           uint16_t token_len) {
   int r;
+
   WRITE(framer, u8, kMCEncryptionResType);
   WRITE(framer, u16, secret_len);
   WRITE_RAW(framer, secret, secret_len);
   WRITE(framer, u16, token_len);
   WRITE_RAW(framer, token, token_len);
+
   return 0;
 }
 
@@ -250,6 +259,7 @@ int mc_framer_login_req(mc_framer_t* framer,
                         uint8_t difficulty,
                         uint8_t max_players) {
   int r;
+
   WRITE(framer, u8, kMCLoginReqType);
   WRITE(framer, u32, entity_id);
   WRITE(framer, string, level_type);
@@ -258,5 +268,16 @@ int mc_framer_login_req(mc_framer_t* framer,
   WRITE(framer, u8, difficulty);
   WRITE(framer, u8, 0);
   WRITE(framer, u8, max_players);
+
+  return 0;
+}
+
+
+int mc_framer_kick(mc_framer_t* framer, mc_string_t* reason) {
+  int r;
+
+  WRITE(framer, u8, kMCKickType);
+  WRITE(framer, string, reason);
+
   return 0;
 }

@@ -8,6 +8,7 @@
 #include "openssl/evp.h"  /* EVP_CIPHER_CTX */
 
 typedef struct mc_framer_s mc_framer_t;
+typedef void (*mc_framer_send_cb_t)(mc_framer_t*, int status);
 
 struct mc_framer_s {
   unsigned char* data;
@@ -23,7 +24,9 @@ void mc_framer_destroy(mc_framer_t* framer);
 void mc_framer_use_aes(mc_framer_t* framer, EVP_CIPHER_CTX* aes);
 
 /* Send all accumulated data */
-int mc_framer_send(mc_framer_t* framer, uv_stream_t* stream);
+int mc_framer_send(mc_framer_t* framer,
+                   uv_stream_t* stream,
+                   mc_framer_send_cb_t cb);
 
 /* Generate various frames */
 int mc_framer_enc_key_req(mc_framer_t* framer,
@@ -44,5 +47,6 @@ int mc_framer_login_req(mc_framer_t* framer,
                         int8_t dimension,
                         uint8_t difficulty,
                         uint8_t max_players);
+int mc_framer_kick(mc_framer_t* framer, mc_string_t* reason);
 
 #endif  /* SRC_FRAMER_H_ */

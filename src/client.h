@@ -38,6 +38,7 @@ struct mc_client_s {
   mc_server_t* server;
   uv_tcp_t tcp;
   mc_framer_t framer;
+  int destroyed;
 
   mc_client__state_t state;
   mc_client__enc_buf_t encrypted;
@@ -58,8 +59,8 @@ struct mc_client_s {
   EVP_CIPHER_CTX aes_out;
 };
 
-int mc_client_init(mc_server_t* server, mc_client_t* client);
-void mc_client_destroy(mc_client_t* client);
+mc_client_t* mc_client_init(mc_server_t* server);
+void mc_client_destroy(mc_client_t* client, const char* reason);
 
 #undef MC_MAX_BUF_SIZE
 
