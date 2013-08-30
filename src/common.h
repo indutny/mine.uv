@@ -2,7 +2,6 @@
 #define SRC_COMMON_H_
 
 #include <stdint.h>  /* uint8_t */
-#include <sys/types.h>  /* ssize_t */
 
 typedef enum mc_frame_type_e mc_frame_type_t;
 typedef enum mc_client_status_e mc_client_status_t;

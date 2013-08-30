@@ -12,8 +12,8 @@ typedef void (*mc_framer_send_cb_t)(mc_framer_t*, int status);
 
 struct mc_framer_s {
   unsigned char* data;
-  ssize_t offset;
-  ssize_t len;
+  int offset;
+  int len;
   EVP_CIPHER_CTX* aes;
 };
 

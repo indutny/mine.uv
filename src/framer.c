@@ -1,6 +1,5 @@
 #include <arpa/inet.h>  /* ntohs, ntohl */
 #include <stdlib.h>  /* malloc, free, realloc */
-#include <sys/types.h>  /* ssize_t */
 
 #include "framer.h"
 #include "uv.h"  /* uv_write */
@@ -41,11 +40,11 @@ struct mc_framer__req_s {
   mc_framer_send_cb_t cb;
 
   /* Not really necessary, but might be useful for debugging */
-  ssize_t len;
+  int len;
 };
 
 static void mc_framer__after_send(uv_write_t* req, int status);
-static int mc_framer__check_grow(mc_framer_t* framer, ssize_t size);
+static int mc_framer__check_grow(mc_framer_t* framer, int size);
 static int mc_framer__write_u8(mc_framer_t* framer, uint8_t v);
 static int mc_framer__write_u16(mc_framer_t* framer, uint16_t v);
 static int mc_framer__write_u32(mc_framer_t* framer, uint32_t v);
@@ -145,7 +144,7 @@ void mc_framer__after_send(uv_write_t* req, int status) {
 }
 
 
-int mc_framer__check_grow(mc_framer_t* framer, ssize_t size) {
+int mc_framer__check_grow(mc_framer_t* framer, int size) {
   if (framer->offset + size <= framer->len)
     return 0;
 

@@ -2,7 +2,6 @@
 #include <assert.h>  /* assert */
 #include <stdint.h>  /* uint8_t */
 #include <stdlib.h>  /* abort */
-#include <sys/types.h>  /* ssize_t */
 
 #include "parser.h"
 
@@ -61,7 +60,7 @@ struct mc_parser_s {
 };
 
 
-int mc_parser_execute(uint8_t* data, ssize_t len, mc_frame_t* frame) {
+int mc_parser_execute(uint8_t* data, int len, mc_frame_t* frame) {
   uint8_t type;
   uint8_t tmp;
   mc_parser_t parser;
