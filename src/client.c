@@ -272,12 +272,12 @@ int mc_client__check_enc_res(mc_client_t* client, mc_frame_t* frame) {
   if (r != 1)
     return -1;
 
-  /* Send enc key response with empty payload */
-  r = mc_framer_enc_key_res(&client->framer, NULL, 0, NULL, 0);
+  r = mc_client__compute_api_hash(client);
   if (r != 0)
     return r;
 
-  r = mc_client__compute_api_hash(client);
+  /* Send enc key response with empty payload */
+  r = mc_framer_enc_key_res(&client->framer, NULL, 0, NULL, 0);
   if (r != 0)
     return r;
 
@@ -289,8 +289,8 @@ int mc_client__check_enc_res(mc_client_t* client, mc_frame_t* frame) {
 int mc_client__compute_api_hash(mc_client_t* client) {
   int r;
   int i;
-  int carry;
   int sign_change;
+  int carry;
   unsigned char hash_out[EVP_MAX_MD_SIZE];
   unsigned int s;
   char* api_hash;
@@ -333,30 +333,27 @@ int mc_client__compute_api_hash(mc_client_t* client) {
     api_hash++;
     carry = 1;
     for (i = s - 1; i >= 0; i--) {
-      hash_out[i] = ~hash_out[i];
-      if (carry) {
-        if (hash_out[i] == 0xff) {
-          hash_out[i] = 0;
-        } else {
-          hash_out[i]++;
-          carry = 1;
-        }
+      if (carry == 1) {
+        if (hash_out[i] == 0x0)
+          continue;
+        else
+          hash_out[i]--;
+        carry = 0;
       }
+      hash_out[i] = ~hash_out[i];
     }
   }
 
   /* Convert hash to ascii */
-  for (i = 0; i < (int) s; i++) {
-    snprintf(api_hash + i * 2, (s - i) * 2, "%02x", hash_out[i]);
-  }
-  api_hash[i * 2] = 0;
+  for (i = 0; i < (int) s; i++)
+    snprintf(api_hash + i * 2, (s - i) * 2 + 1, "%02x", hash_out[i]);
 
   /* Skip leading zeroes */
   for (i = 0; i < (int) s * 2; i++)
     if (api_hash[i] != '0')
       break;
-  if (i != sign_change)
-    memmove(api_hash, api_hash + i, s* 2 - i + 1);
+  if (i != 0)
+    memmove(api_hash, api_hash + i, s * 2 - i + 1);
 
 final:
   EVP_MD_CTX_cleanup(&sha);

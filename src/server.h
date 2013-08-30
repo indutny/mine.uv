@@ -23,8 +23,8 @@ struct mc_server_s {
   int rsa_pub_asn1_len;
 
   /* Server id */
-  uint16_t server_id[20];
-  unsigned char ascii_server_id[20];
+  uint16_t server_id[16];
+  unsigned char ascii_server_id[16];
 };
 
 int mc_server_init(mc_server_t* server, mc_config_t* config);

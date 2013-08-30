@@ -95,6 +95,7 @@ int mc_server__generate_rsa(mc_server_t* server) {
 
 int mc_server__generate_id(mc_server_t* server) {
   int r;
+  unsigned char code;
   size_t i;
 
   /* Generate binary server id */
@@ -105,8 +106,9 @@ int mc_server__generate_id(mc_server_t* server) {
   /* Translate it into readable character set: U+0021 - U+007E */
   assert(ARRAY_SIZE(server->server_id) == ARRAY_SIZE(server->ascii_server_id));
   for (i = 0; i < ARRAY_SIZE(server->server_id); i++) {
-    server->server_id[i] = htons(0x0021 + (server->server_id[i] % 0x005f));
-    server->ascii_server_id[i] = 0x21 + (server->server_id[i] % 0x5f);
+    code = 0x0021 + (server->server_id[i] % 0x005f);
+    server->server_id[i] = htons((uint16_t) code);
+    server->ascii_server_id[i] = code;
   }
 
   return 0;
