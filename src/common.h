@@ -29,6 +29,8 @@ enum mc_frame_type_e {
   kMCPosAndLookType = 0x0D,
   kMCDiggingType = 0x0E,
   kMCBlockPlacementType = 0x0F,
+  kMCHeldItemChangeType = 0x10,
+  kMCUseBedType = 0x11,
   kMCClientSettingsType = 0xCC,
   kMCClientStatusType = 0xCD,
   kMCPluginMsgType = 0xFA,
@@ -71,7 +73,7 @@ struct mc_slot_s {
   uint16_t count;
   uint16_t damage;
   uint16_t nbt_len;
-  const unsigned char* nbt;
+  unsigned char* nbt;
   int allocated;
 };
 
@@ -126,6 +128,9 @@ struct mc_frame_s {
       int8_t cursor_y;
       int8_t cursor_z;
     } block_placement;
+    struct {
+      uint16_t slot_id;
+    } held_item_change;
     struct {
       mc_string_t locale;
       uint8_t view_distance;

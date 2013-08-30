@@ -69,7 +69,7 @@ int mc_parser_execute(uint8_t* data, ssize_t len, mc_frame_t* frame) {
   switch (frame->type) {
     case kMCKeepAliveType:
       PARSE_READ(&parser, u32, &frame->body.keepalive);
-      return parser.offset;
+      break;
     case kMCLoginReqType:
       return mc_parser__parse_login_req(&parser, frame);
     case kMCHandshakeType:
@@ -87,7 +87,7 @@ int mc_parser_execute(uint8_t* data, ssize_t len, mc_frame_t* frame) {
       frame->body.pos_and_look.stance = 0;
       frame->body.pos_and_look.yaw = 0;
       frame->body.pos_and_look.pitch = 0;
-      return parser.offset;
+      break;
     case kMCPlayerPosType:
       return mc_parser__parse_pos(&parser, frame);
     case kMCPlayerLookType:
@@ -98,12 +98,17 @@ int mc_parser_execute(uint8_t* data, ssize_t len, mc_frame_t* frame) {
       return mc_parser__parse_digging(&parser, frame);
     case kMCBlockPlacementType:
       return mc_parser__parse_block_placement(&parser, frame);
+    case kMCHeldItemChangeType:
+      PARSE_READ(&parser, u16, &frame->body.held_item_change.slot_id);
+      if (frame->body.held_item_change.slot_id > 8)
+        return -1;
+      break;
     case kMCClientSettingsType:
       return mc_parser__parse_settings(&parser, frame);
     case kMCClientStatusType:
       PARSE_READ(&parser, u8, &tmp);
       frame->body.client_status = (mc_client_status_t) tmp;
-      return parser.offset;
+      break;
     case kMCEncryptionResType:
       return mc_parser__parse_enc_resp(&parser, frame);
     case kMCPluginMsgType:
@@ -112,6 +117,8 @@ int mc_parser_execute(uint8_t* data, ssize_t len, mc_frame_t* frame) {
       /* Unknown frame, or frame should be sent by server */
       return -1;
   }
+
+  return parser.offset;
 }
 
 
@@ -224,7 +231,7 @@ int mc_parser__read_slot(mc_parser_t* p, mc_slot_t* slot) {
   if (slot->nbt_len == 0xfff)
     return 1;
 
-  PARSE_READ_RAW(p, (unsigned char**) &slot->nbt, slot->nbt_len);
+  PARSE_READ_RAW(p, &slot->nbt, slot->nbt_len);
 
   return 1;
 }
@@ -340,11 +347,15 @@ int mc_parser__parse_digging(mc_parser_t* p, mc_frame_t* frame) {
     return 0;
 
   PARSE_READ(p, u8, &tmp);
+  if (tmp > 5)
+    return -1;
   frame->body.digging.status = (mc_digging_status_t) tmp;
   PARSE_READ(p, u32, (uint32_t*) &frame->body.digging.x);
   PARSE_READ(p, u8, (uint8_t*) &frame->body.digging.y);
   PARSE_READ(p, u32, (uint32_t*) &frame->body.digging.z);
   PARSE_READ(p, u8, &tmp);
+  if (tmp > 5)
+    return -1;
   frame->body.digging.face = (mc_face_t) tmp;
 
   return p->offset;
@@ -363,6 +374,16 @@ int mc_parser__parse_block_placement(mc_parser_t* p, mc_frame_t* frame) {
   PARSE_READ(p, u8, (uint8_t*) &frame->body.block_placement.cursor_x);
   PARSE_READ(p, u8, (uint8_t*) &frame->body.block_placement.cursor_y);
   PARSE_READ(p, u8, (uint8_t*) &frame->body.block_placement.cursor_z);
+
+  /* Validate cursor pos */
+  if (frame->body.block_placement.cursor_x < 0 ||
+      frame->body.block_placement.cursor_x > 16 ||
+      frame->body.block_placement.cursor_y < 0 ||
+      frame->body.block_placement.cursor_y > 16 ||
+      frame->body.block_placement.cursor_z < 0 ||
+      frame->body.block_placement.cursor_z > 16) {
+    return -1;
+  }
 
   return p->offset;
 }
