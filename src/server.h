@@ -1,8 +1,12 @@
 #ifndef SRC_SERVER_H_
 #define SRC_SERVER_H_
 
-#include "openssl/rsa.h"  /* RSA */
-#include "uv.h"
+#include <stdint.h>  /* uint8_t */
+
+/* Forward declarations */
+struct uv_loop_s;
+struct uv_tcp_s;
+struct rsa_st;
 
 typedef struct mc_config_s mc_config_t;
 typedef struct mc_server_s mc_server_t;
@@ -13,15 +17,15 @@ struct mc_config_s {
 };
 
 struct mc_server_s {
-  uv_loop_t* loop;
-  uv_tcp_t tcp;
+  struct uv_loop_s* loop;
+  struct uv_tcp_s* tcp;
 
   int version;
   int connections;
   int max_connections;
 
   /* RSA key */
-  RSA* rsa;
+  struct rsa_st* rsa;
   unsigned char* rsa_pub_asn1;
   int rsa_pub_asn1_len;
 

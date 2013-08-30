@@ -3,14 +3,12 @@
 
 #include "openssl/crypto.h"
 #include "server.h"
+#include "nbt.h"
 
 int main() {
   int r;
   mc_server_t server;
   mc_config_t config;
-
-  /* Initialize OpenSSL */
-  OPENSSL_init();
 
   /* Start server */
   memset(&config, 0, sizeof(config));

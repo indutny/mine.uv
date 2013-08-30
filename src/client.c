@@ -10,6 +10,7 @@
 #include "framer.h"  /* mc_framer_t */
 #include "openssl/evp.h"  /* EVP_* */
 #include "openssl/rand.h"  /* RAND_bytes */
+#include "openssl/rsa.h"  /* RSA_* */
 #include "parser.h"  /* mc_parser_execute */
 #include "server.h"  /* mc_server_t */
 
@@ -44,7 +45,7 @@ mc_client_t* mc_client_new(mc_server_t* server) {
   if (r != 0)
     goto fatal;
 
-  r = uv_accept((uv_stream_t*) &server->tcp, (uv_stream_t*) &client->tcp);
+  r = uv_accept((uv_stream_t*) server->tcp, (uv_stream_t*) &client->tcp);
   if (r != 0)
     goto fatal;
 

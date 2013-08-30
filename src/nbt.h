@@ -10,7 +10,7 @@ typedef enum mc_nbt_comp_e mc_nbt_comp_t;
 enum mc_nbt_comp_e {
   kNBTUncompressed,
   kNBTDeflate,
-  kNBTZip
+  kNBTGZip
 };
 
 enum mc_nbt_value_type_e {

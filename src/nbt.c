@@ -1,11 +1,12 @@
 #include <arpa/inet.h>  /* ntohs */
 #include <assert.h>  /* assert */
 #include <stdlib.h>  /* NULL, malloc, free */
-#include <string.h>  /* memcpy */
+#include <string.h>  /* memcpy, memset */
 
 #include "nbt.h"
 #include "zlib.h"
 
+static const int kUncompressIncrement = 1024;
 static const int kMaxDepth = 1024;
 static const int kCompoundCapacity = 4;
 
@@ -55,25 +56,37 @@ static mc_nbt_value_t* mc_nbt__parse_high_order(mc_nbt__tag_t tag,
 static mc_nbt_value_t mc_nbt__end;
 
 mc_nbt_value_t* mc_nbt_parse(unsigned char* data, int len, mc_nbt_comp_t comp) {
+  mc_nbt_value_t* res;
   mc_nbt__parser_t parser;
+  unsigned char* uncompressed;
 
   if (comp == kNBTUncompressed) {
-    parser.data = data;
     parser.len = len;
+    parser.data = data;
   } else {
-    parser.len = mc_nbt__decompress(data, len, comp, &parser.data);
+    parser.len = mc_nbt__decompress(data, len, comp, &uncompressed);
+    parser.data = uncompressed;
     if (parser.len < 0)
       return NULL;
   }
 
   parser.depth = 0;
-  return mc_nbt__parse(&parser);
+  res = mc_nbt__parse(&parser);
+
+  /* De-allocate uncompressed data */
+  if (comp != kNBTUncompressed)
+    free(uncompressed);
+
+  return res;
 }
 
 
 void mc_nbt_destroy(mc_nbt_value_t* val) {
-  /* Not implemented yet */
-  abort();
+  int32_t i;
+  if (val->type == kNBTList || val->type == kNBTCompound)
+    for (i = 0; i < val->value.values.len; i++)
+      mc_nbt_destroy(val->value.values.list[i]);
+  free(val);
 }
 
 
@@ -81,8 +94,60 @@ int mc_nbt__decompress(unsigned char* data,
                        int len,
                        mc_nbt_comp_t comp,
                        unsigned char** out) {
-  /* Not implemented yet */
-  abort();
+  int r;
+  int out_len;
+  unsigned char* tmp;
+  z_stream stream;
+
+  memset(&stream, 0, sizeof(stream));
+  r = inflateInit2(&stream, comp == kNBTGZip ? 31 : 15);
+  if (r != Z_OK)
+    return -1;
+
+  stream.next_in = data;
+  stream.avail_in = len;
+
+  /* NBT should be really good at compressing */
+  out_len = 2 * len;
+  *out = malloc(stream.avail_out);
+  if (*out == NULL)
+    goto fatal;
+
+  stream.avail_out = out_len;
+  stream.next_out = *out;
+
+  do {
+    r = inflate(&stream, Z_SYNC_FLUSH);
+    if (r == Z_STREAM_END)
+      break;
+
+    if (r != Z_OK)
+      goto fatal;
+
+    /* Buffer too small... */
+    tmp = malloc(out_len + kUncompressIncrement);
+    if (tmp == NULL)
+      goto fatal;
+    memcpy(tmp, *out, out_len);
+    free(*out);
+    *out = tmp;
+
+    stream.avail_out = kUncompressIncrement;
+    stream.next_out = *out + out_len;
+    out_len += kUncompressIncrement;
+  } while (1);
+
+  r = inflateEnd(&stream);
+  if (r != Z_OK) {
+    free(*out);
+    return -1;
+  }
+
+  return out_len;
+
+fatal:
+  free(*out);
+  inflateEnd(&stream);
   return -1;
 }
 
@@ -122,7 +187,9 @@ mc_nbt_value_t* mc_nbt__parse(mc_nbt__parser_t* parser) {
   parser->name_len = name_len;
 
   /* Parse tag's payload */
+  parser->depth++;
   res = mc_nbt__parse_payload(tag, parser);
+  parser->depth--;
 
   if (res != NULL) {
     assert(res->name.len == name_len);
@@ -273,7 +340,6 @@ mc_nbt_value_t* mc_nbt__parse_array(mc_nbt__tag_t tag,
       if (parser->len < len)
         return NULL;
 
-      res->value.i8_list.len = len;
       additional_len = len - 1;
       break;
     case kNBTTagString:
@@ -286,7 +352,6 @@ mc_nbt_value_t* mc_nbt__parse_array(mc_nbt__tag_t tag,
       if (parser->len < len)
         return NULL;
 
-      res->value.str.len = len;
       additional_len = len - 1;
       break;
     case kNBTTagIntArray:
@@ -299,7 +364,6 @@ mc_nbt_value_t* mc_nbt__parse_array(mc_nbt__tag_t tag,
       if (parser->len < len * 4)
         return NULL;
 
-      res->value.i32_list.len = len;
       additional_len = (len - 1) * 4;
     default:
       return NULL;
@@ -309,18 +373,24 @@ mc_nbt_value_t* mc_nbt__parse_array(mc_nbt__tag_t tag,
   if (res == NULL)
     return NULL;
 
+  /*
+   * NOTE: all those arrays have `len` field, so it doesn't matter -
+   * which one to choose in union
+   */
+  res->value.str.len = len;
+
   /* Read items */
   switch (tag) {
     case kNBTTagByteArray:
     case kNBTTagString:
       memcpy(res->value.str.value, parser->data, len);
+      parser->data += len;
+      parser->len -= len;
       break;
     case kNBTTagIntArray:
       if (parser->len < 4)
         goto fatal;
 
-      len = ntohs(*(uint16_t*) (parser->data + 1));
-      additional_len = (len - 1) * sizeof(*res->value.i32_list.list);
       for (i = 0; i < len; i++) {
         res->value.i32_list.list[i] = ntohl(*(uint32_t*) parser->data);
         parser->data += 4;
@@ -350,15 +420,14 @@ mc_nbt_value_t* mc_nbt__parse_high_order(mc_nbt__tag_t tag,
   int name_len;
 
   if (tag == kNBTTagList) {
-    if (parser->len < 3)
+    if (parser->len < 5)
       return NULL;
 
     child_tag = (mc_nbt__tag_t) parser->data[0];
-    len = ntohs(*(uint16_t*) parser->data);
-    res->value.values.len = len;
+    len = ntohl(*(uint32_t*) (parser->data + 1));
 
-    parser->data += 3;
-    parser->len -= 3;
+    parser->data += 5;
+    parser->len -= 5;
 
     res = mc_nbt__alloc(tag,
                         parser,
@@ -385,12 +454,7 @@ mc_nbt_value_t* mc_nbt__parse_high_order(mc_nbt__tag_t tag,
       return res;
 
     i = 0;
-    child = NULL;
-    while (child != &mc_nbt__end) {
-      /* Error, free all previous items */
-      if (child == NULL)
-        goto fatal;
-
+    while (1) {
       /* Not enough space */
       if (i == len) {
         parser->name_len = name_len;
@@ -398,6 +462,8 @@ mc_nbt_value_t* mc_nbt__parse_high_order(mc_nbt__tag_t tag,
         tmp = mc_nbt__alloc(tag, parser, len * sizeof(*res->value.values.list));
         if (tmp == NULL)
           goto fatal;
+
+        /* Restore old data */
         memcpy(tmp,
                res,
                sizeof(*res) +
@@ -406,15 +472,30 @@ mc_nbt_value_t* mc_nbt__parse_high_order(mc_nbt__tag_t tag,
         res = tmp;
         tmp = NULL;
       }
+
+      /* Parse child */
       child = mc_nbt__parse(parser);
+
+      /* End tag */
+      if (child == &mc_nbt__end)
+        break;
+
+      /* Error, free all previous items */
+      if (child == NULL)
+        goto fatal;
+
+      /* Insert child in the list */
+      res->value.values.list[i++] = child;
     }
   }
+  res->value.values.len = i;
 
   return res;
 
 fatal:
+  i--;
   for (; i >= 0; i--)
-    free(res->value.values.list[i]);
+    mc_nbt_destroy(res->value.values.list[i]);
   free(res);
   return NULL;
 }

@@ -48,7 +48,8 @@ def run_gyp(args):
 if __name__ == '__main__':
   args = sys.argv[1:]
 
-  args.append(os.path.join(os.path.abspath(root), 'mine.gyp'))
+  if 'test/test.gyp' not in args:
+    args.append(os.path.join(os.path.abspath(root), 'mine.gyp'))
   common_fn  = os.path.join(os.path.abspath(root), 'common.gypi')
   options_fn = os.path.join(os.path.abspath(root), 'options.gypi')
 
