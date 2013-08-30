@@ -94,3 +94,20 @@ int mc_string_from_ascii(mc_string_t* to, const char* from) {
 
   return 0;
 }
+
+
+void mc_slot_init(mc_slot_t* slot) {
+  slot->id = 0;
+  slot->count = 0;
+  slot->damage = 0;
+  slot->nbt_len = 0;
+  slot->nbt = NULL;
+  slot->allocated = 0;
+}
+
+void mc_slot_destroy(mc_slot_t* slot) {
+  if (slot->allocated) {
+    free(slot->nbt);
+    slot->nbt = NULL;
+  }
+}

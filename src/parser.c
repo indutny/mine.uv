@@ -31,6 +31,7 @@ static int mc_parser__read_u64(mc_parser_t* p, uint64_t* out);
 static int mc_parser__read_float(mc_parser_t* p, float* out);
 static int mc_parser__read_double(mc_parser_t* p, double* out);
 static int mc_parser__read_string(mc_parser_t* p, mc_string_t* str);
+static int mc_parser__read_slot(mc_parser_t* p, mc_slot_t* slot);
 static int mc_parser__read_raw(mc_parser_t* p,
                                unsigned char** out,
                                size_t size);
@@ -41,6 +42,7 @@ static int mc_parser__parse_pos(mc_parser_t* p, mc_frame_t* frame);
 static int mc_parser__parse_look(mc_parser_t* p, mc_frame_t* frame);
 static int mc_parser__parse_pos_and_look(mc_parser_t* p, mc_frame_t* frame);
 static int mc_parser__parse_digging(mc_parser_t* p, mc_frame_t* frame);
+static int mc_parser__parse_block_placement(mc_parser_t* p, mc_frame_t* frame);
 static int mc_parser__parse_settings(mc_parser_t* p, mc_frame_t* frame);
 static int mc_parser__parse_enc_resp(mc_parser_t* p, mc_frame_t* frame);
 static int mc_parser__parse_plugin_msg(mc_parser_t* p, mc_frame_t* frame);
@@ -94,6 +96,8 @@ int mc_parser_execute(uint8_t* data, ssize_t len, mc_frame_t* frame) {
       return mc_parser__parse_pos_and_look(&parser, frame);
     case kMCDiggingType:
       return mc_parser__parse_digging(&parser, frame);
+    case kMCBlockPlacementType:
+      return mc_parser__parse_block_placement(&parser, frame);
     case kMCClientSettingsType:
       return mc_parser__parse_settings(&parser, frame);
     case kMCClientStatusType:
@@ -202,6 +206,25 @@ int mc_parser__read_string(mc_parser_t* p, mc_string_t* str) {
   p->data += str->len;
   p->offset += str->len;
   p->len -= str->len;
+
+  return 1;
+}
+
+
+int mc_parser__read_slot(mc_parser_t* p, mc_slot_t* slot) {
+  mc_slot_init(slot);
+
+  PARSE_READ(p, u16, &slot->id);
+  if (slot->id == 0xffff)
+    return 1;
+
+  PARSE_READ(p, u16, &slot->count);
+  PARSE_READ(p, u16, &slot->damage);
+  PARSE_READ(p, u16, &slot->nbt_len);
+  if (slot->nbt_len == 0xfff)
+    return 1;
+
+  PARSE_READ_RAW(p, (unsigned char**) &slot->nbt, slot->nbt_len);
 
   return 1;
 }
@@ -318,11 +341,28 @@ int mc_parser__parse_digging(mc_parser_t* p, mc_frame_t* frame) {
 
   PARSE_READ(p, u8, &tmp);
   frame->body.digging.status = (mc_digging_status_t) tmp;
-  PARSE_READ(p, u32, &frame->body.digging.x);
-  PARSE_READ(p, u8, &frame->body.digging.y);
-  PARSE_READ(p, u32, &frame->body.digging.z);
+  PARSE_READ(p, u32, (uint32_t*) &frame->body.digging.x);
+  PARSE_READ(p, u8, (uint8_t*) &frame->body.digging.y);
+  PARSE_READ(p, u32, (uint32_t*) &frame->body.digging.z);
   PARSE_READ(p, u8, &tmp);
   frame->body.digging.face = (mc_face_t) tmp;
+
+  return p->offset;
+}
+
+
+int mc_parser__parse_block_placement(mc_parser_t* p, mc_frame_t* frame) {
+  if (p->len < 13)
+    return 0;
+
+  PARSE_READ(p, u32, (uint32_t*) &frame->body.block_placement.x);
+  PARSE_READ(p, u8, &frame->body.block_placement.y);
+  PARSE_READ(p, u32, (uint32_t*) &frame->body.block_placement.z);
+  PARSE_READ(p, u8, (uint8_t*) &frame->body.block_placement.direction);
+  PARSE_READ(p, slot, &frame->body.block_placement.held_item);
+  PARSE_READ(p, u8, (uint8_t*) &frame->body.block_placement.cursor_x);
+  PARSE_READ(p, u8, (uint8_t*) &frame->body.block_placement.cursor_y);
+  PARSE_READ(p, u8, (uint8_t*) &frame->body.block_placement.cursor_z);
 
   return p->offset;
 }

@@ -10,6 +10,7 @@ typedef enum mc_digging_status_e mc_digging_status_t;
 typedef enum mc_face_e mc_face_t;
 typedef struct mc_frame_s mc_frame_t;
 typedef struct mc_string_s mc_string_t;
+typedef struct mc_slot_s mc_slot_t;
 
 enum mc_frame_type_e {
   kMCKeepAliveType = 0x00,
@@ -27,6 +28,7 @@ enum mc_frame_type_e {
   kMCPlayerLookType= 0x0C,
   kMCPosAndLookType = 0x0D,
   kMCDiggingType = 0x0E,
+  kMCBlockPlacementType = 0x0F,
   kMCClientSettingsType = 0xCC,
   kMCClientStatusType = 0xCD,
   kMCPluginMsgType = 0xFA,
@@ -61,6 +63,15 @@ enum mc_face_e {
 struct mc_string_s {
   const uint16_t* data;
   uint16_t len;
+  int allocated;
+};
+
+struct mc_slot_s {
+  uint16_t id;
+  uint16_t count;
+  uint16_t damage;
+  uint16_t nbt_len;
+  const unsigned char* nbt;
   int allocated;
 };
 
@@ -100,11 +111,21 @@ struct mc_frame_s {
     } pos_and_look;
     struct {
       mc_digging_status_t status;
-      uint32_t x;
-      uint8_t y;
-      uint32_t z;
+      int32_t x;
+      int8_t y;
+      int32_t z;
       mc_face_t face;
     } digging;
+    struct {
+      int32_t x;
+      uint8_t y;
+      int32_t z;
+      int8_t direction;
+      mc_slot_t held_item;
+      int8_t cursor_x;
+      int8_t cursor_y;
+      int8_t cursor_z;
+    } block_placement;
     struct {
       mc_string_t locale;
       uint8_t view_distance;
@@ -126,6 +147,7 @@ struct mc_frame_s {
   } body;
 };
 
+/* String utils */
 void mc_string_init(mc_string_t* str);
 void mc_string_destroy(mc_string_t* str);
 
@@ -133,5 +155,9 @@ void mc_string_set(mc_string_t* str, const uint16_t* data, int len);
 int mc_string_copy(mc_string_t* to, mc_string_t* from);
 char* mc_string_to_ascii(mc_string_t* str);
 int mc_string_from_ascii(mc_string_t* to, const char* from);
+
+/* Slot utils */
+void mc_slot_init(mc_slot_t* slot);
+void mc_slot_destroy(mc_slot_t* slot);
 
 #endif  /* SRC_COMMON_H_ */
