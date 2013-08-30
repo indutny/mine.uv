@@ -288,10 +288,12 @@ int mc_client__check_enc_res(mc_client_t* client, mc_frame_t* frame) {
 /* TODO(indutny): fix it */
 int mc_client__compute_api_hash(mc_client_t* client) {
   int r;
-  unsigned int i;
-  unsigned int s;
-  unsigned int sign_change;
+  int i;
+  int carry;
+  int sign_change;
   unsigned char hash_out[EVP_MAX_MD_SIZE];
+  unsigned int s;
+  char* api_hash;
 
   EVP_MD_CTX sha;
   EVP_MD_CTX_init(&sha);
@@ -322,28 +324,39 @@ int mc_client__compute_api_hash(mc_client_t* client) {
 
   assert(s > 0 && s <= sizeof(hash_out));
 
-  sign_change = (hash_out[0] & 0x80) != 0 ? 1 : 0;
-  if (sign_change)
-    client->api_hash[0] = '-';
+  api_hash = client->api_hash;
+  sign_change = hash_out[0] >= 0x80 ? 1 : 0;
+
+  // Change sign and add `1`
+  if (sign_change) {
+    api_hash[0] = '-';
+    api_hash++;
+    carry = 1;
+    for (i = s - 1; i >= 0; i--) {
+      hash_out[i] = ~hash_out[i];
+      if (carry) {
+        if (hash_out[i] == 0xff) {
+          hash_out[i] = 0;
+        } else {
+          hash_out[i]++;
+          carry = 1;
+        }
+      }
+    }
+  }
 
   /* Convert hash to ascii */
-  for (i = 0; i < s; i++) {
-    snprintf(client->api_hash + i * 2 + sign_change,
-             sizeof(client->api_hash) - i * 2 - sign_change,
-             "%02x",
-             sign_change ? (0xff ^ hash_out[i]) : hash_out[i]);
+  for (i = 0; i < (int) s; i++) {
+    snprintf(api_hash + i * 2, (s - i) * 2, "%02x", hash_out[i]);
   }
-  client->api_hash[s * 2 + sign_change] = 0;
+  api_hash[i * 2] = 0;
 
   /* Skip leading zeroes */
-  for (i = sign_change; i < s * 2 + sign_change; i++)
-    if (client->api_hash[i] != '0')
+  for (i = 0; i < (int) s * 2; i++)
+    if (api_hash[i] != '0')
       break;
-  if (i != sign_change) {
-    memmove(client->api_hash + sign_change,
-            client->api_hash + i,
-            s * 2 + sign_change - i + 1);
-  }
+  if (i != sign_change)
+    memmove(api_hash, api_hash + i, s* 2 - i + 1);
 
 final:
   EVP_MD_CTX_cleanup(&sha);
