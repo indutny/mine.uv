@@ -8,6 +8,7 @@
 
 #define PARSE_READ(p, type, out) \
     do { \
+      int r; \
       r = mc_parser__read_##type((p), (out)); \
       if (r <= 0) \
         return r; \
@@ -15,6 +16,7 @@
 
 #define PARSE_READ_RAW(p, out, size) \
     do { \
+      int r; \
       r = mc_parser__read_raw((p), (out), (size)); \
       if (r <= 0) \
         return r; \
@@ -32,6 +34,7 @@ static int mc_parser__read_string(mc_parser_t* p, mc_string_t* str);
 static int mc_parser__read_raw(mc_parser_t* p,
                                unsigned char** out,
                                size_t size);
+static int mc_parser__parse_login_req(mc_parser_t* p, mc_frame_t* frame);
 static int mc_parser__parse_handshake(mc_parser_t* p, mc_frame_t* frame);
 static int mc_parser__parse_pos(mc_parser_t* p, mc_frame_t* frame);
 static int mc_parser__parse_look(mc_parser_t* p, mc_frame_t* frame);
@@ -48,7 +51,6 @@ struct mc_parser_s {
 
 
 int mc_parser_execute(uint8_t* data, ssize_t len, mc_frame_t* frame) {
-  int r;
   uint8_t type;
   uint8_t tmp;
   mc_parser_t parser;
@@ -62,8 +64,10 @@ int mc_parser_execute(uint8_t* data, ssize_t len, mc_frame_t* frame) {
 
   switch (frame->type) {
     case kMCKeepAliveType:
-      PARSE_READ(&parser, u16, &frame->body.keepalive);
+      PARSE_READ(&parser, u32, &frame->body.keepalive);
       return parser.offset;
+    case kMCLoginReqType:
+      return mc_parser__parse_login_req(&parser, frame);
     case kMCHandshakeType:
       return mc_parser__parse_handshake(&parser, frame);
     case kMCPlayerPosType:
@@ -126,7 +130,6 @@ int mc_parser__read_u32(mc_parser_t* p, uint32_t* out) {
 
 
 int mc_parser__read_u64(mc_parser_t* p, uint64_t* out) {
-  int r;
   uint32_t hi;
   uint32_t lo;
   if (p->len < 8)
@@ -141,8 +144,6 @@ int mc_parser__read_u64(mc_parser_t* p, uint64_t* out) {
 
 
 int mc_parser__read_float(mc_parser_t* p, float* out) {
-  int r;
-
   if (p->len < 4)
     return 0;
 
@@ -151,13 +152,11 @@ int mc_parser__read_float(mc_parser_t* p, float* out) {
   p->offset += 4;
   p->len -= 4;
 
-  return r;
+  return 1;
 }
 
 
 int mc_parser__read_double(mc_parser_t* p, double* out) {
-  int r;
-
   if (p->len < 8)
     return 0;
 
@@ -166,12 +165,11 @@ int mc_parser__read_double(mc_parser_t* p, double* out) {
   p->offset += 8;
   p->len -= 8;
 
-  return r;
+  return 1;
 }
 
 
 int mc_parser__read_string(mc_parser_t* p, mc_string_t* str) {
-  int r;
   uint16_t len;
 
   mc_string_init(str);
@@ -204,9 +202,22 @@ int mc_parser__read_raw(mc_parser_t* p, unsigned char** out, size_t size) {
 }
 
 
-int mc_parser__parse_handshake(mc_parser_t* p, mc_frame_t* frame) {
-  int r;
+int mc_parser__parse_login_req(mc_parser_t* p, mc_frame_t* frame) {
+  if (p->len < 11)
+    return 0;
 
+  PARSE_READ(p, u32, &frame->body.login_req.entity_id);
+  PARSE_READ(p, string, &frame->body.login_req.level);
+  PARSE_READ(p, u8, &frame->body.login_req.game_mode);
+  PARSE_READ(p, u8, (uint8_t*) &frame->body.login_req.dimension);
+  PARSE_READ(p, u8, &frame->body.login_req.difficulty);
+  PARSE_READ(p, u8, &frame->body.login_req.max_players);
+
+  return p->offset;
+}
+
+
+int mc_parser__parse_handshake(mc_parser_t* p, mc_frame_t* frame) {
   if (p->len < 9)
     return 0;
 
@@ -220,8 +231,6 @@ int mc_parser__parse_handshake(mc_parser_t* p, mc_frame_t* frame) {
 
 
 int mc_parser__parse_pos(mc_parser_t* p, mc_frame_t* frame) {
-  int r;
-
   if (p->len < 33)
     return 0;
 
@@ -239,8 +248,6 @@ int mc_parser__parse_pos(mc_parser_t* p, mc_frame_t* frame) {
 
 
 int mc_parser__parse_look(mc_parser_t* p, mc_frame_t* frame) {
-  int r;
-
   if (p->len < 9)
     return 0;
 
@@ -258,8 +265,6 @@ int mc_parser__parse_look(mc_parser_t* p, mc_frame_t* frame) {
 
 
 int mc_parser__parse_pos_and_look(mc_parser_t* p, mc_frame_t* frame) {
-  int r;
-
   if (p->len < 41)
     return 0;
 
@@ -276,8 +281,6 @@ int mc_parser__parse_pos_and_look(mc_parser_t* p, mc_frame_t* frame) {
 
 
 int mc_parser__parse_settings(mc_parser_t* p, mc_frame_t* frame) {
-  int r;
-
   if (p->len < 6)
     return 0;
 
@@ -292,8 +295,6 @@ int mc_parser__parse_settings(mc_parser_t* p, mc_frame_t* frame) {
 
 
 int mc_parser__parse_enc_resp(mc_parser_t* p, mc_frame_t* frame) {
-  int r;
-
   if (p->len < 4)
     return 0;
 
@@ -311,8 +312,6 @@ int mc_parser__parse_enc_resp(mc_parser_t* p, mc_frame_t* frame) {
 
 
 int mc_parser__parse_plugin_msg(mc_parser_t* p, mc_frame_t* frame) {
-  int r;
-
   if (p->len < 4)
     return 0;
 

@@ -38,8 +38,16 @@ struct mc_string_s {
 struct mc_frame_s {
   mc_frame_type_t type;
   union {
-    uint16_t keepalive;
+    uint32_t keepalive;
     mc_client_status_t client_status;
+    struct {
+      uint32_t entity_id;
+      mc_string_t level;
+      uint8_t game_mode;
+      int8_t dimension;
+      uint8_t difficulty;
+      uint8_t max_players;
+    } login_req;
     struct {
       uint8_t version;
       mc_string_t username;
