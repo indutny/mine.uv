@@ -12,7 +12,6 @@ int main() {
 
   /* Start server */
   memset(&config, 0, sizeof(config));
-  config.port = 25565;
   config.max_clients = 1000;
   config.client_timeout = 10000;
 
