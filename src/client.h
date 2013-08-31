@@ -22,6 +22,7 @@ enum mc_client__state_e {
   kMCInitialState,
   kMCInHandshakeState,
   kMCLoginState,
+  kMCAwaitsVerification,
   kMCReadyState
 };
 
@@ -61,6 +62,7 @@ struct mc_client_s {
   unsigned char verify_token[20];
 
   /* Session verifier */
+  int verified;
   mc_session_verify_t* verify;
 
   /* Shared secret and encryption stuff */

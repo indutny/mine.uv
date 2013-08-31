@@ -19,7 +19,6 @@ static void mc_server__on_close(uv_handle_t* handle);
 
 int mc_server_init(mc_server_t* server, mc_config_t* config) {
   int r;
-  struct sockaddr_in addr;
 
   /* Initialize OpenSSL */
   OPENSSL_init();
@@ -53,17 +52,11 @@ int mc_server_init(mc_server_t* server, mc_config_t* config) {
   if (server->config.port == 0)
     server->config.port = 25565;
   if (server->config.session_url == NULL) {
-    server->config.session_url = "http://session.minecraft.net/game/"
+    server->config.session_url = "session.minecraft.net/game/"
                                  "checkserver.jsp?user=%uid%&serverId=%sid%";
   }
 
-  memset(&addr, 0, sizeof(addr));
-  addr.sin_len = sizeof(addr);
-  addr.sin_family = AF_INET;
-  addr.sin_port = htons(server->config.port);
-  addr.sin_addr.s_addr = INADDR_ANY;
-
-  r = uv_tcp_bind(server->tcp, addr);
+  r = uv_tcp_bind(server->tcp, uv_ip4_addr("0.0.0.0", server->config.port));
   if (r != 0)
     goto fatal;
 

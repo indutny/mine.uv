@@ -21,7 +21,6 @@ static void mc_client__on_read(uv_stream_t* stream,
                                uv_buf_t buf);
 static int mc_client__restart_timer(mc_client_t* client);
 static void mc_client__cycle(mc_client_t* client);
-static int mc_client__send_kick(mc_client_t* client, const char* reason);
 static void mc_client__after_kick(mc_framer_t* framer, int status);
 
 mc_client_t* mc_client_new(mc_server_t* server) {
@@ -74,6 +73,7 @@ mc_client_t* mc_client_new(mc_server_t* server) {
     goto nodelay_failed;
 
   client->verify = mc_session_verify_new(client);
+  client->verified = 0;
   if (client->verify == NULL)
     goto verify_new_failed;
 
@@ -149,7 +149,9 @@ void mc_client_destroy(mc_client_t* client, const char* reason) {
   client->cleartext.len = 0;
   mc_string_destroy(&client->username);
 
-  mc_session_verify_destroy(client->verify);
+  /* NOTE: We might destroy verify on response to lower memory usage */
+  if (client->verify != NULL)
+    mc_session_verify_destroy(client->verify);
   client->verify = NULL;
 
   free(client->ascii_username);

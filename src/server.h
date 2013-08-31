@@ -28,8 +28,13 @@ struct mc_config_s {
   int client_timeout;
 
   /*
+   * Timeout for mojang server to reply for session verify request.
+   */
+  int verify_timeout;
+
+  /*
    * Session check url. Defaults to:
-   * http://session.minecraft.net/game/checkserver.jsp?user=%uid%&serverId=%sid%
+   * session.minecraft.net/game/checkserver.jsp?user=%uid%&serverId=%sid%
    */
   const char* session_url;
 };

@@ -17,6 +17,9 @@
 static int mc_client__send_enc_req(mc_client_t* client);
 static int mc_client__check_enc_res(mc_client_t* client, mc_frame_t* frame);
 static int mc_client__compute_api_hash(mc_client_t* client);
+static void mc_client__verify_cb(mc_client_t* client,
+                                 mc_session_verify_status_t status);
+static int mc_client__finish_login(mc_client_t* client);
 
 
 int mc_client__send_enc_req(mc_client_t* client) {
@@ -115,7 +118,7 @@ int mc_client__check_enc_res(mc_client_t* client, mc_frame_t* frame) {
     return r;
 
   /* Send verifying request to server */
-  mc_session_verify(client->verify, NULL);
+  mc_session_verify(client->verify, mc_client__verify_cb);
 
   /* Send enc key response with empty payload */
   r = mc_framer_enc_key_res(&client->framer, NULL, 0, NULL, 0);
@@ -207,6 +210,24 @@ final:
 }
 
 
+void mc_client__verify_cb(mc_client_t* client,
+                          mc_session_verify_status_t status) {
+  mc_session_verify_destroy(client->verify);
+  client->verify = NULL;
+
+  client->verified = status == kMCVerifyOk;
+  if (client->verified) {
+    if (client->state == kMCAwaitsVerification) {
+      mc_client__finish_login(client);
+    } else {
+      /* Or we'll do it in mc_client__handle_handshake */
+    }
+  } else {
+    mc_client__send_kick(client, "Failed to verify user identity");
+  }
+}
+
+
 int mc_client__handle_handshake(mc_client_t* client, mc_frame_t* frame) {
   int r;
   switch (client->state) {
@@ -251,29 +272,41 @@ int mc_client__handle_handshake(mc_client_t* client, mc_frame_t* frame) {
       if (frame->body.client_status != kMCInitialSpawnStatus)
         return -1;
 
-      r = mc_framer_login_req(&client->framer,
-                              1,
-                              &client->username,
-                              0,
-                              0,
-                              0,
-                              100);
-      if (r != 0)
-        return r;
-
-      r = mc_framer_send(&client->framer, (uv_stream_t*) &client->tcp, NULL);
-      if (r != 0)
-        return r;
-
-      r = mc_client__client_limit(client);
-      if (r != 0)
-        return r;
-
-      client->server->clients++;
-      client->state = kMCReadyState;
+      if (client->verified)
+        return mc_client__finish_login(client);
+      else
+        client->state = kMCAwaitsVerification;
       break;
     default:
       return -1;
   }
+  return 0;
+}
+
+
+int mc_client__finish_login(mc_client_t* client) {
+  int r;
+
+  r = mc_framer_login_req(&client->framer,
+                          1,
+                          &client->username,
+                          0,
+                          0,
+                          0,
+                          100);
+  if (r != 0)
+    return r;
+
+  r = mc_framer_send(&client->framer, (uv_stream_t*) &client->tcp, NULL);
+  if (r != 0)
+    return r;
+
+  r = mc_client__client_limit(client);
+  if (r != 0)
+    return r;
+
+  client->server->clients++;
+  client->state = kMCReadyState;
+
   return 0;
 }
