@@ -20,6 +20,7 @@ static void mc_session_verify__on_read(uv_stream_t* stream,
                                        uv_buf_t buf);
 static void mc_session_verify__on_timeout(uv_timer_t* timer, int status);
 static void mc_session_verify__cancel(mc_session_verify_t* verify);
+static int mc_session_verify__check_busy_await(mc_session_verify_t* verify);
 static void mc_session_verify__parametrize(char* url,
                                            const char* match,
                                            const char* value,
@@ -32,7 +33,7 @@ static void mc_session_verify__parametrize(char* url,
       (verify)->cb = NULL; \
     } while (0)
 
-static const char* request_template = "GET %s HTTP/1.1\r\nHost: %s\r\n\r\n";
+static const char request_template[] = "GET %s HTTP/1.1\r\nHost: %s\r\n\r\n";
 
 mc_session_verify_t* mc_session_verify_new(struct mc_client_s* client) {
   int r;
@@ -44,6 +45,7 @@ mc_session_verify_t* mc_session_verify_new(struct mc_client_s* client) {
 
   /* Number of handles waiting for close event */
   verify->close_await = 0;
+  verify->busy_await = 0;
 
   verify->client = client;
   verify->url = NULL;
@@ -165,16 +167,18 @@ void mc_session_verify__on_getaddrinfo(uv_getaddrinfo_t* req,
   struct addrinfo* i;
   struct sockaddr_in* addr;
 
-  if (status == UV_ECANCELED) {
-    uv_freeaddrinfo(res);
+  if (status == UV_ECANCELED)
     return;
-  }
 
   verify = container_of(req, mc_session_verify_t, dns_req);
   verify->dns_active = 0;
 
-  if (status != 0) {
+  if (mc_session_verify__check_busy_await(verify) != 0) {
     uv_freeaddrinfo(res);
+    return;
+  }
+
+  if (status != 0) {
     INVOKE_CB_ONCE(verify, kMCVerifyErrDNS);
     return;
   }
@@ -221,6 +225,9 @@ void mc_session_verify__on_connect(uv_connect_t* req, int status) {
 
   verify = container_of(req, mc_session_verify_t, connect_req);
   verify->connect_active = 0;
+
+  if (mc_session_verify__check_busy_await(verify) != 0)
+    return;
 
   if (status != 0) {
     INVOKE_CB_ONCE(verify, kMCVerifyErrConnect);
@@ -286,6 +293,9 @@ void mc_session_verify__after_write(uv_write_t* req, int status) {
 
   /* Just free the data */
   free(req->data);
+
+  /* No need to check value */
+  mc_session_verify__check_busy_await(verify);
 }
 
 
@@ -339,25 +349,51 @@ void mc_session_verify__on_timeout(uv_timer_t* timer, int status) {
 
 
 void mc_session_verify__cancel(mc_session_verify_t* verify) {
+  size_t i;
   int r;
-  if (verify->dns_active) {
-    r = uv_cancel((uv_req_t*) &verify->dns_req);
-    assert(r == 0);
-  }
-  if (verify->connect_active) {
-    r = uv_cancel((uv_req_t*) &verify->connect_req);
-    assert(r == 0);
-  }
-  if (verify->write_active) {
-    r = uv_cancel((uv_req_t*) &verify->write_req);
-    assert(r == 0);
-  }
+  int* active[3] = {
+    &verify->dns_active,
+    &verify->connect_active,
+    &verify->write_active
+  };
+  uv_req_t* reqs[3] = {
+    (uv_req_t*) &verify->dns_req,
+    (uv_req_t*) &verify->connect_req,
+    (uv_req_t*) &verify->write_req
+  };
+
+  for (i = 0; i < ARRAY_SIZE(active); i++)
+    if (*active[i]) {
+      r = uv_cancel(reqs[i]);
+
+      /* If request is busy - await it */
+      if (r == UV_EBUSY) {
+        verify->close_await++;
+        verify->busy_await++;
+      } else {
+        assert(r == 0);
+        *active[i] = 0;
+      }
+    }
+
   uv_read_stop((uv_stream_t*) &verify->tcp);
   uv_timer_stop(&verify->timer);
 
   verify->dns_active = 0;
   verify->connect_active = 0;
   verify->write_active = 0;
+}
+
+
+int mc_session_verify__check_busy_await(mc_session_verify_t* verify) {
+  if (verify->busy_await <= 0)
+    return 0;
+
+  verify->busy_await--;
+  if (--verify->close_await == 0)
+    free(verify);
+
+  return -1;
 }
 
 

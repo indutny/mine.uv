@@ -207,7 +207,6 @@ int mc_client__compute_api_hash(mc_client_t* client) {
       break;
   if (i != 0)
     memmove(api_hash, api_hash + i, s * 2 - i + 1);
-  client->api_hash[client->api_hash_len] = 0;
   client->api_hash_len -= i;
 
 final:

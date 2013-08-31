@@ -27,6 +27,9 @@ struct mc_session_verify_s {
   /* Number of handles waiting for close event */
   int close_await;
 
+  /* Number of asynchronous requests that we should await for */
+  int busy_await;
+
   struct mc_client_s* client;
 
   /* Parametrized url */
