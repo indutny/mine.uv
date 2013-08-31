@@ -21,6 +21,7 @@ static void mc_client__on_read(uv_stream_t* stream,
                                ssize_t nread,
                                uv_buf_t buf);
 static int mc_client__restart_timer(mc_client_t* client);
+static int mc_client__client_limit(mc_client_t* client);
 static void mc_client__cycle(mc_client_t* client);
 static int mc_client__send_kick(mc_client_t* client, const char* reason);
 static void mc_client__after_kick(mc_framer_t* framer, int status);
@@ -85,6 +86,15 @@ mc_client_t* mc_client_new(mc_server_t* server) {
   client->ascii_username = NULL;
   client->secret = NULL;
   client->secret_len = 0;
+
+  /*
+   * I know its quite late, but its better than pressing
+   * session server and doing AES just to figure out that there was no room
+   * for the client
+   */
+  r = mc_client__client_limit(client);
+  if (r != 0)
+    return NULL;
 
   return client;
 
@@ -204,6 +214,16 @@ int mc_client__restart_timer(mc_client_t* client) {
                      client->server->config.client_timeout,
                      0);
   return r;
+}
+
+
+int mc_client__client_limit(mc_client_t* client) {
+  if (client->server->clients != 0 &&
+      client->server->clients == client->server->config.max_clients) {
+    mc_client_destroy(client, "Maximum connections limit reached");
+    return -1;
+  }
+  return 0;
 }
 
 
@@ -594,11 +614,9 @@ int mc_client__handle_handshake(mc_client_t* client, mc_frame_t* frame) {
       if (r != 0)
         return r;
 
-      if (client->server->clients != 0 &&
-          client->server->clients == client->server->config.max_clients) {
-        mc_client_destroy(client, "Maximum connections limit reached");
-        return -1;
-      }
+      r = mc_client__client_limit(client);
+      if (r != 0)
+        return r;
 
       client->server->clients++;
       client->state = kMCReadyState;

@@ -12,11 +12,26 @@ typedef struct mc_config_s mc_config_t;
 typedef struct mc_server_s mc_server_t;
 
 struct mc_config_s {
-  int port;  /* TCP port on which it should listen */
+  /* TCP port on which it should listen */
+  int port;
+
+  /*
+   * Maximum amount of simultaneously connected clients,
+   * NOTE: counts only authorized clients
+   */
   int max_clients;
-  int client_timeout;  /* in milliseconds, activates if no packets has arrived
-                        * in specified amount of time
-                        */
+
+  /*
+   * Timeout in milliseconds, activates if no packets has arrived
+   * in specified amount of time
+   */
+  int client_timeout;
+
+  /*
+   * Session check url. Defaults to:
+   * "http://session.minecraft.net/game/checkserver.jsp?user=%s&serverId=%s"
+   */
+  const char* session_url;
 };
 
 struct mc_server_s {
