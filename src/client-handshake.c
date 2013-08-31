@@ -191,10 +191,10 @@ int mc_client__compute_api_hash(mc_client_t* client) {
   }
 
   /* Convert hash to ascii */
-  client->api_hash_len = s * 2 + sign_change;
+  client->api_hash_len = s * 2;
   for (i = 0; i < (int) s; i++) {
     snprintf(api_hash + i * 2,
-             client->api_hash_len - i * 2,
+             client->api_hash_len - i * 2 + 1,
              "%02x",
              hash_out[i]);
   }
@@ -203,9 +203,11 @@ int mc_client__compute_api_hash(mc_client_t* client) {
   for (i = 0; i < (int) s * 2; i++)
     if (api_hash[i] != '0')
       break;
-  if (i != 0)
-    memmove(api_hash, api_hash + i, s * 2 - i + 1);
-  client->api_hash_len -= i;
+  if (i != 0) {
+    client->api_hash_len -= i;
+    memmove(api_hash, api_hash + i, client->api_hash_len + 1);
+  }
+  client->api_hash_len += sign_change;
 
 final:
   EVP_MD_CTX_cleanup(&sha);
