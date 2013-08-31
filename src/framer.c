@@ -1,5 +1,6 @@
 #include <arpa/inet.h>  /* ntohs, ntohl */
 #include <stdlib.h>  /* malloc, free, realloc */
+#include <string.h>  /* memcpy */
 
 #include "framer.h"
 #include "uv.h"  /* uv_write */
