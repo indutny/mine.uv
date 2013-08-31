@@ -78,9 +78,10 @@ malloc_failed:
 
 
 void mc_session_verify_destroy(mc_session_verify_t* verify) {
+  assert(verify->client != NULL);
+  verify->client = NULL;
   free(verify->url);
   verify->url = NULL;
-  verify->client = NULL;
 
   /* NOTE: we're heavily relying on order of callback execution here */
   mc_session_verify__cancel(verify);
