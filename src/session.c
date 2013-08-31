@@ -224,14 +224,14 @@ void mc_session_verify__on_connect(uv_connect_t* req, int status) {
 
   /* Parametrize template */
   len = strlen(verify->url) + sizeof(request_template);
-  query = malloc(len);
+  query = malloc(len + 1);
   if (query == NULL) {
     INVOKE_CB_ONCE(verify, kMCVerifyErrNoMem);
     return;
   }
 
   uri = strstr(verify->url, "/");
-  sprintf(query, request_template, uri, verify->hostname);
+  snprintf(query, len, request_template, uri, verify->hostname);
   buf = uv_buf_init(query, strlen(query));
 
   /* Store it inside structure to free it later */
