@@ -212,6 +212,7 @@ final:
 
 void mc_client__verify_cb(mc_client_t* client,
                           mc_session_verify_status_t status) {
+  assert(client->verify != NULL);
   mc_session_verify_destroy(client->verify);
   client->verify = NULL;
 
