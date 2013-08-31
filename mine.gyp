@@ -21,6 +21,8 @@
     },
     "sources": [
       "src/client.c",
+      "src/client-handshake.c",
+      "src/client-protocol.c",
       "src/common.c",
       "src/framer.c",
       "src/parser.c",
