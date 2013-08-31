@@ -112,7 +112,7 @@ void mc_session_verify(mc_session_verify_t* verify, mc_session_verify_cb cb) {
     return cb(verify->client, kMCVerifyErrNoMem);
 
   /* Copy template from server's config */
-  memcpy(url, verify->client->server->config.session_url, session_url_len);
+  memcpy(url, verify->client->server->config.session_url, session_url_len + 1);
 
   /* Parametrize */
   mc_session_verify__parametrize(url,
