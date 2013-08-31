@@ -282,7 +282,7 @@ void mc_session_verify__after_write(uv_write_t* req, int status) {
   mc_session_verify_t* verify;
 
   verify = container_of(req, mc_session_verify_t, write_req);
-  verify->write_active = 1;
+  verify->write_active = 0;
 
   /* Just free the data */
   free(req->data);
