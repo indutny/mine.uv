@@ -140,7 +140,7 @@ void mc_session_verify(mc_session_verify_t* verify, mc_session_verify_cb cb) {
                      &verify->dns_req,
                      mc_session_verify__on_getaddrinfo,
                      verify->hostname,
-                     "http",
+                     NULL,
                      NULL);
   if (r != 0)
     return cb(verify->client, kMCVerifyErrDNS);
