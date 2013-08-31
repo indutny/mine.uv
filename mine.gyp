@@ -27,6 +27,7 @@
       "src/framer.c",
       "src/parser.c",
       "src/server.c",
+      "src/session.c",
       "src/world.c",
       "src/nbt.c",
     ],

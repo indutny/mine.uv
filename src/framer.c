@@ -203,9 +203,9 @@ int mc_framer__write_string(mc_framer_t* framer, mc_string_t* str) {
   uint16_t len;
 
   len = str->len;
-  GROW(framer, sizeof(len) + len * 2);
+  GROW(framer, sizeof(len) + len * sizeof(*str->data));
   WRITE(framer, u16, len);
-  WRITE_RAW(framer, (const unsigned char*) str->data, len * 2);
+  WRITE_RAW(framer, (const unsigned char*) str->data, len * sizeof(*str->data));
 
   return 0;
 }

@@ -48,10 +48,19 @@ int mc_server_init(mc_server_t* server, mc_config_t* config) {
   if (r != 0)
     goto fatal;
 
+  /* Copy config and set defaults */
+  memcpy(&server->config, config, sizeof(*config));
+  if (server->config.port == 0)
+    server->config.port = 25565;
+  if (server->config.session_url == NULL) {
+    server->config.session_url = "http://session.minecraft.net/game/"
+                                 "checkserver.jsp?user=%uid%&serverId=%sid%";
+  }
+
   memset(&addr, 0, sizeof(addr));
   addr.sin_len = sizeof(addr);
   addr.sin_family = AF_INET;
-  addr.sin_port = htons(config->port);
+  addr.sin_port = htons(server->config.port);
   addr.sin_addr.s_addr = INADDR_ANY;
 
   r = uv_tcp_bind(server->tcp, addr);
@@ -64,15 +73,6 @@ int mc_server_init(mc_server_t* server, mc_config_t* config) {
 
   server->version = 74;  /* 1.6.2 */
   server->clients = 0;
-
-  /* Copy config and set defaults */
-  memcpy(&server->config, config, sizeof(*config));
-  if (server->config.port == 0)
-    server->config.port = 25565;
-  if (server->config.session_url == NULL) {
-    server->config.session_url = "http://session.minecraft.net/"
-                                 "game/checkserver.jsp?user=%s&serverId=%s";
-  }
 
   return 0;
 

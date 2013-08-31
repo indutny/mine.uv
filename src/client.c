@@ -71,7 +71,11 @@ mc_client_t* mc_client_new(mc_server_t* server) {
 
   r = mc_framer_init(&client->framer);
   if (r != 0)
-    goto framer_init_failed;
+    goto nodelay_failed;
+
+  client->verify = mc_session_verify_new(client);
+  if (client->verify == NULL)
+    goto verify_new_failed;
 
   client->destroyed = 0;
   client->state = kMCInitialState;
@@ -80,6 +84,8 @@ mc_client_t* mc_client_new(mc_server_t* server) {
 
   mc_string_init(&client->username);
   client->ascii_username = NULL;
+  client->ascii_username_len = 0;
+  client->api_hash_len = 0;
   client->secret = NULL;
   client->secret_len = 0;
 
@@ -90,24 +96,31 @@ mc_client_t* mc_client_new(mc_server_t* server) {
    */
   r = mc_client__client_limit(client);
   if (r != 0)
-    return NULL;
+    goto client_limit_failed;
 
   return client;
 
-framer_init_failed:
+client_limit_failed:
+  mc_session_verify_destroy(client->verify);
+  client->verify = NULL;
+
+verify_new_failed:
   mc_framer_destroy(&client->framer);
 
 nodelay_failed:
-  client->close_await++;
+  if (client->close_await == 0)
+    client->close_await = 2;
   uv_close((uv_handle_t*) &client->tcp, mc_client__on_close);
 
 tcp_init_failed:
-  client->close_await++;
+  if (client->close_await == 0)
+    client->close_await = 1;
   uv_close((uv_handle_t*) &client->timeout, mc_client__on_close);
 
 timer_init_failed:
   client->server = NULL;
-  free(client);
+  if (client->close_await == 0)
+    free(client);
   return NULL;
 }
 
@@ -128,15 +141,22 @@ void mc_client_destroy(mc_client_t* client, const char* reason) {
   if (client->state == kMCReadyState)
     client->server->clients--;
 
-  client->close_await += 2;
+  client->close_await = 2;
   uv_close((uv_handle_t*) &client->tcp, mc_client__on_close);
   uv_close((uv_handle_t*) &client->timeout, mc_client__on_close);
   mc_framer_destroy(&client->framer);
   client->encrypted.len = 0;
   client->cleartext.len = 0;
   mc_string_destroy(&client->username);
+
+  mc_session_verify_destroy(client->verify);
+  client->verify = NULL;
+
   free(client->ascii_username);
   client->ascii_username = NULL;
+  client->ascii_username_len = 0;
+  client->api_hash_len = 0;
+
   free(client->secret);
   client->secret = NULL;
 }
@@ -146,6 +166,8 @@ void mc_client__on_close(uv_handle_t* handle) {
   mc_client_t* client;
 
   client = handle->data;
+  handle->data = NULL;
+
   if (--client->close_await == 0)
     free(client);
 }

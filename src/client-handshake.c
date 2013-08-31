@@ -12,6 +12,7 @@
 #include "openssl/rand.h"  /* RAND_bytes */
 #include "openssl/rsa.h"  /* RSA_* */
 #include "server.h"  /* mc_server_t */
+#include "session.h"  /* mc_session_verify_t */
 
 static int mc_client__send_enc_req(mc_client_t* client);
 static int mc_client__check_enc_res(mc_client_t* client, mc_frame_t* frame);
@@ -109,10 +110,12 @@ int mc_client__check_enc_res(mc_client_t* client, mc_frame_t* frame) {
   if (r != 1)
     return -1;
 
-  /* TODO(indutny): Send verifying request to server */
   r = mc_client__compute_api_hash(client);
   if (r != 0)
     return r;
+
+  /* Send verifying request to server */
+  mc_session_verify(client->verify, NULL);
 
   /* Send enc key response with empty payload */
   r = mc_framer_enc_key_res(&client->framer, NULL, 0, NULL, 0);
@@ -196,6 +199,7 @@ int mc_client__compute_api_hash(mc_client_t* client) {
       break;
   if (i != 0)
     memmove(api_hash, api_hash + i, s * 2 - i + 1);
+  client->api_hash_len = s * 2 - i + sign_change;
 
 final:
   EVP_MD_CTX_cleanup(&sha);
@@ -222,6 +226,7 @@ int mc_client__handle_handshake(mc_client_t* client, mc_frame_t* frame) {
       client->ascii_username = mc_string_to_ascii(&client->username);
       if (client->ascii_username == NULL)
         return -1;
+      client->ascii_username_len = strlen(client->ascii_username);
 
       r = mc_client__send_enc_req(client);
       if (r != 0)

@@ -251,19 +251,21 @@ int mc_parser__read_double(mc_parser_t* p, double* out) {
 
 int mc_parser__read_string(mc_parser_t* p, mc_string_t* str) {
   uint16_t len;
+  size_t raw_len;
 
   mc_string_init(str);
 
   PARSE_READ(p, u16, &len);
-  if (p->len < (size_t) len * 2)
+  raw_len = len * sizeof(*str->data);
+  if (p->len < raw_len)
     return 0;
 
   str->data = (uint16_t*) p->data;
-  str->len = len * 2;
+  str->len = len;
 
-  p->data += str->len;
-  p->offset += str->len;
-  p->len -= str->len;
+  p->data += raw_len;
+  p->offset += raw_len;
+  p->len -= raw_len;
 
   return 1;
 }

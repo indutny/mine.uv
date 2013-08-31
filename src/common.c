@@ -31,11 +31,11 @@ void mc_string_set(mc_string_t* str, const uint16_t* data, int len) {
 int mc_string_copy(mc_string_t* to, mc_string_t* from) {
   assert(to->data == NULL);
 
-  to->data = malloc(from->len);
+  to->data = malloc(from->len * sizeof(*to->data));
   if (to->data == NULL)
     return -1;
 
-  memcpy((char*) to->data, from->data, from->len);
+  memcpy((char*) to->data, from->data, from->len * sizeof(*to->data));
   to->allocated = 1;
   to->len = from->len;
 
@@ -82,7 +82,7 @@ int mc_string_from_ascii(mc_string_t* to, const char* from) {
   assert(to->data == NULL);
 
   len = strlen(from);
-  data = malloc(len * 2);
+  data = malloc(len * sizeof(*to->data));
   if (data == NULL)
     return -1;
 

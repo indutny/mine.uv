@@ -29,7 +29,7 @@ struct mc_config_s {
 
   /*
    * Session check url. Defaults to:
-   * "http://session.minecraft.net/game/checkserver.jsp?user=%s&serverId=%s"
+   * http://session.minecraft.net/game/checkserver.jsp?user=%uid%&serverId=%sid%
    */
   const char* session_url;
 };

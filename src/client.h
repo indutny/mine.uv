@@ -7,7 +7,8 @@
 #include "common.h"  /* mc_string_t */
 #include "framer.h"  /* mc_farmer_t */
 #include "openssl/evp.h"  /* EVP_CIPHER_CTX, EVP_MAX_MD_SIZE */
-#include "server.h"
+#include "server.h"  /* mc_server_t */
+#include "session.h"  /* mc_session_verify_t */
 
 #define MC_MAX_ENC_BUF_SIZE 2048
 #define MC_MAX_CLEAR_BUF_SIZE (MC_MAX_ENC_BUF_SIZE + 512)
@@ -52,10 +53,15 @@ struct mc_client_s {
   /* User identification */
   mc_string_t username;
   char* ascii_username;
+  int ascii_username_len;
   char api_hash[EVP_MAX_MD_SIZE * 2 + 2];
+  int api_hash_len;
 
   /* Verify token */
   unsigned char verify_token[20];
+
+  /* Session verifier */
+  mc_session_verify_t* verify;
 
   /* Shared secret and encryption stuff */
   unsigned char* secret;
