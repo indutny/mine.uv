@@ -14,7 +14,9 @@ typedef struct mc_server_s mc_server_t;
 struct mc_config_s {
   int port;  /* TCP port on which it should listen */
   int max_clients;
-  int client_timeout;  /* in seconds, activates if any packet hasn't arrived */
+  int client_timeout;  /* in milliseconds, activates if no packets has arrived
+                        * in specified amount of time
+                        */
 };
 
 struct mc_server_s {

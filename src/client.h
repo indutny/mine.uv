@@ -38,8 +38,13 @@ struct mc_client_s {
   mc_server_t* server;
   uv_tcp_t tcp;
   mc_framer_t framer;
+  uv_timer_t timeout;
+
+  /* Close state */
+  int close_await;
   int destroyed;
 
+  /* Buffers and connection state */
   mc_client__state_t state;
   mc_client__enc_buf_t encrypted;
   mc_client__clear_buf_t cleartext;

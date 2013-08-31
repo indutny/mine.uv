@@ -15,10 +15,12 @@
 #include "server.h"  /* mc_server_t */
 
 static void mc_client__on_close(uv_handle_t* handle);
+static void mc_client__on_timeout(uv_timer_t* handle, int status);
 static uv_buf_t mc_client__on_alloc(uv_handle_t* handle, size_t suggested_size);
 static void mc_client__on_read(uv_stream_t* stream,
                                ssize_t nread,
                                uv_buf_t buf);
+static int mc_client__restart_timer(mc_client_t* client);
 static void mc_client__cycle(mc_client_t* client);
 static int mc_client__send_kick(mc_client_t* client, const char* reason);
 static void mc_client__after_kick(mc_framer_t* framer, int status);
@@ -36,31 +38,43 @@ mc_client_t* mc_client_new(mc_server_t* server) {
   if (client == NULL)
     return NULL;
 
+  /* Store reference to the server */
+  client->server = server;
+
+  /* Create read timeout's timer */
+  r = uv_timer_init(server->loop, &client->timeout);
+  if (r != 0)
+    goto timer_init_failed;
+  client->timeout.data = client;
+
+  /* NOTE: Its safe to call it here */
+  r = mc_client__restart_timer(client);
+  if (r != 0)
+    goto tcp_init_failed;
+
   r = uv_tcp_init(server->loop, &client->tcp);
   if (r != 0)
-    goto fatal;
+    goto tcp_init_failed;
+  client->tcp.data = client;
 
   /* Do not use Nagle algorithm */
   r = uv_tcp_nodelay(&client->tcp, 1);
   if (r != 0)
-    goto fatal;
+    goto nodelay_failed;
 
   r = uv_accept((uv_stream_t*) server->tcp, (uv_stream_t*) &client->tcp);
   if (r != 0)
-    goto fatal;
+    goto nodelay_failed;
 
-  client->server = server;
-
-  /* TODO(indutny): add timeout */
   r = uv_read_start((uv_stream_t*) &client->tcp,
                     mc_client__on_alloc,
                     mc_client__on_read);
   if (r != 0)
-    goto read_start_failed;
+    goto nodelay_failed;
 
   r = mc_framer_init(&client->framer);
   if (r != 0)
-    goto fatal;
+    goto framer_init_failed;
 
   client->destroyed = 0;
   client->state = kMCInitialState;
@@ -74,10 +88,19 @@ mc_client_t* mc_client_new(mc_server_t* server) {
 
   return client;
 
-read_start_failed:
+framer_init_failed:
+  mc_framer_destroy(&client->framer);
+
+nodelay_failed:
+  client->close_await++;
   uv_close((uv_handle_t*) &client->tcp, mc_client__on_close);
 
-fatal:
+tcp_init_failed:
+  client->close_await++;
+  uv_close((uv_handle_t*) &client->timeout, mc_client__on_close);
+
+timer_init_failed:
+  client->server = NULL;
   free(client);
   return NULL;
 }
@@ -99,7 +122,9 @@ void mc_client_destroy(mc_client_t* client, const char* reason) {
   if (client->state == kMCReadyState)
     client->server->clients--;
 
+  client->close_await += 2;
   uv_close((uv_handle_t*) &client->tcp, mc_client__on_close);
+  uv_close((uv_handle_t*) &client->timeout, mc_client__on_close);
   mc_framer_destroy(&client->framer);
   client->encrypted.len = 0;
   client->cleartext.len = 0;
@@ -114,8 +139,18 @@ void mc_client_destroy(mc_client_t* client, const char* reason) {
 void mc_client__on_close(uv_handle_t* handle) {
   mc_client_t* client;
 
-  client = container_of(handle, mc_client_t, tcp);
-  free(client);
+  client = handle->data;
+  if (--client->close_await == 0)
+    free(client);
+}
+
+
+void mc_client__on_timeout(uv_timer_t* handle, int status) {
+  mc_client_t* client;
+
+  client = container_of(handle, mc_client_t, timeout);
+  if (status == 0)
+    mc_client__send_kick(client, "Connection timed out");
 }
 
 
@@ -151,6 +186,24 @@ void mc_client__on_read(uv_stream_t* stream, ssize_t nread, uv_buf_t buf) {
     /* nread might be equal to UV_EOF, but who cares */
     mc_client_destroy(client, NULL);
   }
+}
+
+
+int mc_client__restart_timer(mc_client_t* client) {
+  int r;
+
+  if (client->server->config.client_timeout == 0)
+    return 0;
+
+  r = uv_timer_stop(&client->timeout);
+  if (r != 0)
+    return -1;
+
+  r = uv_timer_start(&client->timeout,
+                     mc_client__on_timeout,
+                     client->server->config.client_timeout,
+                     0);
+  return r;
 }
 
 
@@ -222,6 +275,10 @@ void mc_client__cycle(mc_client_t* client) {
     /* Not enough data yet */
     if (offset == 0)
       break;
+
+    r = mc_client__restart_timer(client);
+    if (r != 0)
+      return mc_client_destroy(client, "Failed to restart timeout timer");
 
     /* Handle frame */
     if (frame.type == kMCServerListPingType || frame.type == kMCPluginMsgType)
