@@ -323,8 +323,11 @@ void mc_session_verify__on_read(uv_stream_t* stream,
 
   for (i = 0; i < buf.len; i++) {
     if (verify->crlf == 4) {
-      INVOKE_CB_ONCE(verify,
-                     buf.base[i] == 'Y' ? kMCVerifyOk : kMCVerifyRejected);
+      /* YES or OK */
+      if (buf.base[i] == 'Y' || buf.base[i] == 'O')
+        INVOKE_CB_ONCE(verify, kMCVerifyOk);
+      else
+        INVOKE_CB_ONCE(verify, kMCVerifyRejected);
       return;
     }
 
