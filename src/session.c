@@ -376,7 +376,7 @@ void mc_session_verify__parametrize(char* url,
   }
 
   /* Shift tail of string forward */
-  memmove(res + escaped_len, res + match_len, strlen(res) - match_len);
+  memmove(res + escaped_len, res + match_len, strlen(res) - match_len + 1);
 
   /* Insert value */
   for (i = 0; i < value_len; i++) {
