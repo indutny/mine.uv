@@ -2,6 +2,17 @@
 
 WIP
 
+## Build Instructions
+
+```
+git submodule init && git submodule update
+svn co http://gyp.googlecode.com/svn/trunk build/gyp
+./gyp_mine -f make
+make -C out/ -j4
+./out/Release/mine.uv
+```
+
+
 #### LICENSE
 
 This software is licensed under the MIT License.
