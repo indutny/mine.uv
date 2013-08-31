@@ -229,7 +229,9 @@ void mc_client__verify_cb(mc_client_t* client,
       /* Or we'll do it in mc_client__handle_handshake */
     }
   } else {
-    mc_client__send_kick(client, "Failed to verify user identity");
+    char err[128];
+    snprintf(err, sizeof(err), "Failed to verify user identity: %02x", status);
+    return mc_client_destroy(client, "Failed to verify user identity");
   }
 }
 

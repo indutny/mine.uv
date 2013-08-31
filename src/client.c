@@ -21,6 +21,7 @@ static void mc_client__on_read(uv_stream_t* stream,
                                uv_buf_t buf);
 static int mc_client__restart_timer(mc_client_t* client);
 static void mc_client__cycle(mc_client_t* client);
+static int mc_client__send_kick(mc_client_t* client, const char* reason);
 static void mc_client__after_kick(mc_framer_t* framer, int status);
 
 mc_client_t* mc_client_new(mc_server_t* server) {

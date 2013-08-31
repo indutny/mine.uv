@@ -7,6 +7,5 @@
 int mc_client__handle_handshake(mc_client_t* client, mc_frame_t* frame);
 int mc_client__client_limit(mc_client_t* client);
 int mc_client__handle_frame(mc_client_t* client, mc_frame_t* frame);
-int mc_client__send_kick(mc_client_t* client, const char* reason);
 
 #endif  /* SRC_CLIENT_PRIVATE_H_ */
