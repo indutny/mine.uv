@@ -35,6 +35,9 @@ mc_client_t* mc_client_new(mc_server_t* server) {
   /* Store reference to the server */
   client->server = server;
 
+  /* Number of handles waiting for close event */
+  client->close_await = 0;
+
   /* Create read timeout's timer */
   r = uv_timer_init(server->loop, &client->timeout);
   if (r != 0)
