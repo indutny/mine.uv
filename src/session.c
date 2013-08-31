@@ -165,13 +165,16 @@ void mc_session_verify__on_getaddrinfo(uv_getaddrinfo_t* req,
   struct addrinfo* i;
   struct sockaddr_in* addr;
 
-  if (status == UV_ECANCELED)
+  if (status == UV_ECANCELED) {
+    uv_freeaddrinfo(res);
     return;
+  }
 
   verify = container_of(req, mc_session_verify_t, dns_req);
   verify->dns_active = 0;
 
   if (status != 0) {
+    uv_freeaddrinfo(res);
     INVOKE_CB_ONCE(verify, kMCVerifyErrDNS);
     return;
   }
@@ -182,6 +185,7 @@ void mc_session_verify__on_getaddrinfo(uv_getaddrinfo_t* req,
       break;
   }
   if (i == NULL) {
+    uv_freeaddrinfo(res);
     INVOKE_CB_ONCE(verify, kMCVerifyErrNoIPv4);
     return;
   }
@@ -275,6 +279,11 @@ void mc_session_verify__on_connect(uv_connect_t* req, int status) {
 
 
 void mc_session_verify__after_write(uv_write_t* req, int status) {
+  mc_session_verify_t* verify;
+
+  verify = container_of(req, mc_session_verify_t, write_req);
+  verify->write_active = 1;
+
   /* Just free the data */
   free(req->data);
 }
@@ -330,12 +339,19 @@ void mc_session_verify__on_timeout(uv_timer_t* timer, int status) {
 
 
 void mc_session_verify__cancel(mc_session_verify_t* verify) {
-  if (verify->dns_active)
-    uv_cancel((uv_req_t*) &verify->dns_req);
-  if (verify->connect_active)
-    uv_cancel((uv_req_t*) &verify->connect_req);
-  if (verify->write_active)
-    uv_cancel((uv_req_t*) &verify->write_req);
+  int r;
+  if (verify->dns_active) {
+    r = uv_cancel((uv_req_t*) &verify->dns_req);
+    assert(r == 0);
+  }
+  if (verify->connect_active) {
+    r = uv_cancel((uv_req_t*) &verify->connect_req);
+    assert(r == 0);
+  }
+  if (verify->write_active) {
+    r = uv_cancel((uv_req_t*) &verify->write_req);
+    assert(r == 0);
+  }
   uv_read_stop((uv_stream_t*) &verify->tcp);
   uv_timer_stop(&verify->timer);
 
