@@ -103,8 +103,6 @@ int mc_client__check_enc_res(mc_client_t* client, mc_frame_t* frame) {
   }
   if (cipher == NULL)
     return -1;
-  EVP_CIPHER_CTX_init(&client->aes_in);
-  EVP_CIPHER_CTX_init(&client->aes_out);
 
   r = EVP_DecryptInit(&client->aes_in, cipher, client->secret, client->secret);
   if (r != 1)

@@ -89,6 +89,9 @@ mc_client_t* mc_client_new(mc_server_t* server) {
   client->secret = NULL;
   client->secret_len = 0;
 
+  EVP_CIPHER_CTX_init(&client->aes_in);
+  EVP_CIPHER_CTX_init(&client->aes_out);
+
   /*
    * I know its quite late, but its better than pressing
    * session server and doing AES just to figure out that there was no room
@@ -161,6 +164,9 @@ void mc_client_destroy(mc_client_t* client, const char* reason) {
 
   free(client->secret);
   client->secret = NULL;
+
+  EVP_CIPHER_CTX_cleanup(&client->aes_in);
+  EVP_CIPHER_CTX_cleanup(&client->aes_out);
 }
 
 
