@@ -99,7 +99,7 @@ void world_test() {
 
   world = mc_world_new("world.dat");
   ASSERT(world != NULL, "World load failed");
-  mc_world_destroy(world);
+  mc_world_release(world);
 }
 
 

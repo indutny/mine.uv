@@ -11,6 +11,7 @@ typedef struct mc_block_s mc_block_t;
 
 struct mc_world_s {
   char* path;
+  int ref_count;
 };
 
 struct mc_block_s {
@@ -21,6 +22,7 @@ struct mc_block_s {
 };
 
 struct mc_chunk_s {
+  uint8_t y;
   mc_block_t block[16][16][16];
 };
 
@@ -35,6 +37,7 @@ struct mc_region_s {
 
 
 mc_world_t* mc_world_new(const char* path);
-void mc_world_destroy(mc_world_t* world);
+void mc_world_retain(mc_world_t* world);
+void mc_world_release(mc_world_t* world);
 
 #endif  /* SRC_WORLD_H_ */

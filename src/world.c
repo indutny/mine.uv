@@ -15,6 +15,9 @@ mc_world_t* mc_world_new(const char* path) {
   if (res->path == NULL)
     goto strdup_failed;
 
+  /* Retained after allocation */
+  res->ref_count = 1;
+
 strdup_failed:
   free(res);
 
@@ -23,7 +26,14 @@ malloc_failed:
 }
 
 
-void mc_world_destroy(mc_world_t* world) {
+void mc_world_retain(mc_world_t* world) {
+  world->ref_count++;
+}
+
+
+void mc_world_release(mc_world_t* world) {
+  if (--world->ref_count != 0)
+    return;
   free(world->path);
   free(world);
 }
