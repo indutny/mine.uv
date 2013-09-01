@@ -1,9 +1,16 @@
 #include <arpa/inet.h>  /* ntohs */
 #include <assert.h>  /* assert */
+#include <fcntl.h>  /* open, close */
+#include <stdio.h>  /* rename */
 #include <stdlib.h>  /* malloc */
 #include <string.h>  /* memcpy */
+#include <sys/stat.h>  /* stat */
+#include <unistd.h>  /* read, write */
 
 #include "common.h"
+
+static const char kBackupSuffix[] = ".backup";
+static const char kTmpSuffix[] = ".tmp";
 
 void mc_string_init(mc_string_t* str) {
   str->data = NULL;
@@ -110,4 +117,123 @@ void mc_slot_destroy(mc_slot_t* slot) {
     free(slot->nbt);
     slot->nbt = NULL;
   }
+}
+
+
+int mc_read_file(const char* path, char** out) {
+  int r;
+  int off;
+  int fd;
+  int len;
+  char* res;
+  struct stat s;
+
+  fd = open(path, O_RDONLY);
+  if (fd == -1)
+    goto open_failed;
+
+  r = fstat(fd, &s);
+  if (r != 0)
+    goto fstat_failed;
+
+  len = s.st_size;
+  res = malloc(len);
+  if (res == NULL)
+    goto fstat_failed;
+
+  off = 0;
+  while (off < len) {
+    r = read(fd, res + off, len - off);
+    if (r <= 0)
+      goto read_failed;
+    off += r;
+  }
+
+  *out = res;
+  close(fd);
+  return len;
+
+read_failed:
+  free(res);
+
+fstat_failed:
+  close(fd);
+
+open_failed:
+  return -1;
+}
+
+
+int mc_write_file(const char* path, char* out, int len, int update) {
+  int r;
+  int fd;
+  int off;
+  int path_len;
+  char* backup_path;
+  char* tmp_path;
+
+  path_len = strlen(path);
+
+  /* Prepare filenames */
+  if (update) {
+    backup_path = malloc(path_len + sizeof(kBackupSuffix));
+    tmp_path = malloc(path_len + sizeof(kTmpSuffix));
+    if (backup_path == NULL || tmp_path == NULL)
+      goto concat_failed;
+    memcpy(backup_path, path, path_len);
+    memcpy(tmp_path, path, path_len);
+    memcpy(backup_path + path_len, kBackupSuffix, sizeof(kBackupSuffix));
+    memcpy(tmp_path + path_len, kTmpSuffix, sizeof(kTmpSuffix));
+  } else {
+    backup_path = NULL;
+    tmp_path = NULL;
+  }
+
+  /* First: write data to temporary location */
+  fd = open(update ? tmp_path : path, O_WRONLY | O_CREAT | O_TRUNC, 0775);
+  if (fd == -1)
+    goto concat_failed;
+
+  off = 0;
+  while (off < len) {
+    r = write(fd, out + off, len - off);
+    if (r <= 0)
+      goto concat_failed;
+    off += r;
+  }
+
+  close(fd);
+
+  if (update) {
+    /* Second: replace original file */
+    r = rename(path, backup_path);
+    if (r != 0)
+      goto rename_backup_failed;
+    r = rename(tmp_path, path);
+    if (r != 0)
+      goto rename_tmp_failed;
+    r = unlink(backup_path);
+    if (r != 0)
+      goto unlink_failed;
+  }
+
+  free(backup_path);
+  free(tmp_path);
+  return 0;
+
+unlink_failed:
+  unlink(path);
+
+rename_tmp_failed:
+  /* Try to revert changes */
+  rename(backup_path, path);
+
+rename_backup_failed:
+  unlink(tmp_path);
+
+concat_failed:
+  free(backup_path);
+  free(tmp_path);
+
+  return -1;
 }

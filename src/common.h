@@ -510,4 +510,8 @@ int mc_string_from_ascii(mc_string_t* to, const char* from);
 void mc_slot_init(mc_slot_t* slot);
 void mc_slot_destroy(mc_slot_t* slot);
 
+/* File utilities, should be called from worker threads */
+int mc_read_file(const char* path, char** out);
+int mc_write_file(const char* path, char* out, int len, int update);
+
 #endif  /* SRC_COMMON_H_ */
