@@ -1,6 +1,8 @@
 #include <stdio.h>
 #include <stdlib.h>
+
 #include "nbt.h"
+#include "world.h"
 
 #define ASSERT(cond, str) \
     if (!(cond)) { \
@@ -92,10 +94,20 @@ void test_nbt_cycle() {
 }
 
 
+void world_test() {
+  mc_world_t* world;
+
+  world = mc_world_new("world.dat");
+  ASSERT(world != NULL, "World load failed");
+  mc_world_destroy(world);
+}
+
+
 int main() {
   fprintf(stdout, "Running tests...\n");
   test_nbt_predefined();
   test_nbt_cycle();
+  world_test();
   fprintf(stdout, "Done!\n");
 
   return 0;
