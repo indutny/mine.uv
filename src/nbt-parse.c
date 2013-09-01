@@ -5,7 +5,6 @@
 
 #include "nbt.h"
 #include "nbt-private.h"
-#include "zlib.h"
 
 struct mc_nbt__parser_s {
   unsigned char* data;
@@ -14,7 +13,6 @@ struct mc_nbt__parser_s {
   int name_len;
 };
 
-static const int kUncompressIncrement = 1024;
 static const int kMaxDepth = 1024;
 static const int kCompoundCapacity = 4;
 
@@ -71,61 +69,7 @@ int mc_nbt__decompress(unsigned char* data,
                        int len,
                        mc_nbt_comp_t comp,
                        unsigned char** out) {
-  int r;
-  int out_len;
-  unsigned char* tmp;
-  z_stream stream;
-
-  memset(&stream, 0, sizeof(stream));
-  r = inflateInit2(&stream, comp == kNBTGZip ? kGZipBits : kDeflateBits);
-  if (r != Z_OK)
-    return -1;
-
-  stream.next_in = data;
-  stream.avail_in = len;
-
-  /* NBT should be really good at compressing */
-  out_len = 2 * len;
-  *out = malloc(stream.avail_out);
-  if (*out == NULL)
-    goto fatal;
-
-  stream.avail_out = out_len;
-  stream.next_out = *out;
-
-  do {
-    r = inflate(&stream, Z_SYNC_FLUSH);
-    if (r == Z_STREAM_END)
-      break;
-
-    if (r != Z_OK)
-      goto fatal;
-
-    /* Buffer too small... */
-    tmp = malloc(out_len + kUncompressIncrement);
-    if (tmp == NULL)
-      goto fatal;
-    memcpy(tmp, *out, out_len);
-    free(*out);
-    *out = tmp;
-
-    stream.avail_out = kUncompressIncrement;
-    stream.next_out = *out + out_len;
-    out_len += kUncompressIncrement;
-  } while (1);
-
-  r = inflateEnd(&stream);
-  if (r != Z_OK) {
-    free(*out);
-    return -1;
-  }
-
-  return out_len;
-
-fatal:
-  free(*out);
-  inflateEnd(&stream);
-  return -1;
+  return mc_nbt__zlib(data, len, comp, 1, out);
 }
 
 

@@ -1,6 +1,8 @@
 #ifndef SRC_NBT_PRIVATE_H_
 #define SRC_NBT_PRIVATE_H_
 
+#include "nbt.h"  /* mc_nbt_comp_t */
+
 typedef enum mc_nbt__tag_e mc_nbt__tag_t;
 
 enum mc_nbt__tag_e {
@@ -20,5 +22,11 @@ enum mc_nbt__tag_e {
 
 static const int kGZipBits = 31;
 static const int kDeflateBits = 15;
+
+int mc_nbt__zlib(unsigned char* data,
+                 int len,
+                 mc_nbt_comp_t comp,
+                 int decompress,
+                 unsigned char** out);
 
 #endif  /* SRC_NBT_PRIVATE_H_ */

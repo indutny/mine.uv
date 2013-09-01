@@ -143,7 +143,7 @@ mc_nbt_value_t* mc_nbt__create(const char* name,
     return NULL;
 
   res->type = type;
-  res->name.value = (char*) res + additional_payload;
+  res->name.value = (char*) res + sizeof(*res) + additional_payload;
   res->name.len = name_len;
   memcpy((char*) res->name.value, name, name_len);
 

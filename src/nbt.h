@@ -36,7 +36,7 @@ struct mc_nbt_value_s {
   mc_nbt_type_t type;
   struct {
     const char* value;
-    int32_t len;
+    int16_t len;
   } name;
   union {
     int8_t i8;
@@ -54,7 +54,7 @@ struct mc_nbt_value_s {
       int32_t list[1];
     } i32_list;
     struct {
-      int32_t len;
+      int16_t len;
       char value[1];
     } str;
     struct {

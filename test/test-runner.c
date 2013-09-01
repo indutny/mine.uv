@@ -44,7 +44,7 @@ static unsigned char nbt_compressed_data[] = {
 };
 
 
-void test_nbt() {
+void test_nbt_predefined() {
   mc_nbt_value_t* val;
 
   val = mc_nbt_parse(nbt_compressed_data,
@@ -55,9 +55,47 @@ void test_nbt() {
   mc_nbt_destroy(val);
 }
 
+
+void test_nbt_cycle() {
+  int r;
+  mc_nbt_value_t* res;
+  mc_nbt_value_t* val;
+  unsigned char* out;
+
+  /* Generate data */
+  res = mc_nbt_create_compound("mine.uv", 7, 3);
+  ASSERT(res != NULL, "Create compound failed");
+  val = mc_nbt_create_i16("year", 4, 2013);
+  ASSERT(val != NULL, "Create i16 failed");
+  res->value.values.list[0] = val;
+  val = mc_nbt_create_i8("version", 7, 1);
+  ASSERT(val != NULL, "Create i8 failed");
+  res->value.values.list[1] = val;
+  val = mc_nbt_create_str("license", 7, "MIT", 3);
+  ASSERT(val != NULL, "Create str failed");
+  res->value.values.list[2] = val;
+
+  /* Encode it */
+  r = mc_nbt_encode(res, kNBTGZip, &out);
+  ASSERT(r > 0, "Encode failed");
+
+  /* Destroy */
+  mc_nbt_destroy(val);
+
+  val = mc_nbt_parse(out, r, kNBTGZip);
+  ASSERT(val != NULL, "Parse failed");
+  ASSERT(val->type == kNBTCompound, "Not compound root");
+  ASSERT(val->value.values.len == 3, "Not enough items");
+  ASSERT(val->value.values.list[0]->type == kNBTShort, "Not short");
+  ASSERT(val->value.values.list[1]->type == kNBTByte, "Not byte");
+  ASSERT(val->value.values.list[2]->type == kNBTString, "Not string");
+}
+
+
 int main() {
   fprintf(stdout, "Running tests...\n");
-  test_nbt();
+  test_nbt_predefined();
+  test_nbt_cycle();
   fprintf(stdout, "Done!\n");
 
   return 0;

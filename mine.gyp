@@ -29,9 +29,10 @@
       "src/server.c",
       "src/session.c",
       "src/world.c",
-      "src/nbt-value.c",
-      "src/nbt-parse.c",
+      "src/nbt-common.c",
       "src/nbt-encode.c",
+      "src/nbt-parse.c",
+      "src/nbt-value.c",
     ],
   }]
 }
