@@ -339,6 +339,7 @@ mc_nbt_value_t* mc_nbt__parse_high_order(mc_nbt__tag_t tag,
   mc_nbt_value_t* tmp;
   mc_nbt_value_t* child;
   mc_nbt__tag_t child_tag;
+  const char* name;
   int len;
   int i;
   int name_len;
@@ -388,10 +389,12 @@ mc_nbt_value_t* mc_nbt__parse_high_order(mc_nbt__tag_t tag,
           goto fatal;
 
         /* Restore old data */
+        name = tmp->name.value;
         memcpy(tmp,
                res,
                sizeof(*res) +
                   (len - kCompoundCapacity) * sizeof(*res->value.values.list));
+        tmp->name.value = name;
         free(res);
         res = tmp;
         tmp = NULL;
