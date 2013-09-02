@@ -8,9 +8,26 @@
 #include <unistd.h>  /* read, write */
 
 #include "common.h"
+#include "common-private.h"  /* ARRAY_SIZE */
 
 static const char kBackupSuffix[] = ".backup";
 static const char kTmpSuffix[] = ".tmp";
+
+
+void mc_region_destroy(mc_region_t* region) {
+  unsigned int x;
+  unsigned int y;
+  unsigned int z;
+
+  for (x = 0; x < ARRAY_SIZE(region->column); x++) {
+    for (z = 0; z < ARRAY_SIZE(region->column[x]); z++) {
+      for (y = 0; y < ARRAY_SIZE(region->column[x][z].chunks); y++) {
+        free(region->column[x][z].chunks[y]);
+        region->column[x][z].chunks[y] = NULL;
+      }
+    }
+  }
+}
 
 void mc_string_init(mc_string_t* str) {
   str->data = NULL;

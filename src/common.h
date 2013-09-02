@@ -14,6 +14,10 @@ typedef enum mc_block_id_e mc_block_id_t;
 typedef struct mc_frame_s mc_frame_t;
 typedef struct mc_string_s mc_string_t;
 typedef struct mc_slot_s mc_slot_t;
+typedef struct mc_region_s mc_region_t;
+typedef struct mc_column_s mc_column_t;
+typedef struct mc_chunk_s mc_chunk_t;
+typedef struct mc_block_s mc_block_t;
 
 enum mc_frame_type_e {
   /* Sent by both */
@@ -162,7 +166,9 @@ enum mc_biome_e {
   kMCBiomeTaigaHills = 19,
   kMCBiomeExtremeHillsEdge = 20,
   kMCBiomeJungle = 21,
-  kMCBiomeJungleHills = 22
+  kMCBiomeJungleHills = 22,
+
+  kMCBiomeNotGenerated = 0xff
 };
 
 enum mc_block_id_e {
@@ -347,6 +353,33 @@ struct mc_slot_s {
   int allocated;
 };
 
+struct mc_block_s {
+  mc_block_id_t block_id;
+  uint8_t block_metadata;
+  uint8_t block_light;
+  uint8_t block_skylight;
+};
+
+struct mc_chunk_s {
+  mc_block_t block[16][16][16];
+};
+
+struct mc_column_s {
+  int8_t populated;
+  int32_t world_x;
+  int32_t world_z;
+  int64_t last_update;
+  mc_biome_t biomes[16][16];
+  mc_chunk_t* chunks[16];
+
+  /* TODO(indutny): Store entities too */
+  /* TODO(indutny): Store heightmap too */
+};
+
+struct mc_region_s {
+  mc_column_t column[32][32];
+};
+
 struct mc_frame_s {
   mc_frame_type_t type;
   union {
@@ -496,6 +529,9 @@ struct mc_frame_s {
     } plugin_msg;
   } body;
 };
+
+/* Region utils */
+void mc_region_destroy(mc_region_t* region);
 
 /* String utils */
 void mc_string_init(mc_string_t* str);

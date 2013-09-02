@@ -99,16 +99,14 @@ void test_nbt_cycle() {
 void test_anvil() {
   int r;
   unsigned char* out;
-  mc_nbt_value_t* res;
+  mc_region_t* reg;
 
   r = mc_read_file("./test/anvil.mca", &out);
   ASSERT(r > 0, "Read file failed");
 
-  r = mc_anvil_parse(out, r, &res);
+  r = mc_anvil_parse(out, r, &reg);
   ASSERT(r == 0, "Anvil parse failed");
-  free(out);
-
-  mc_nbt_destroy(res);
+  mc_region_destroy(reg);
 }
 
 
