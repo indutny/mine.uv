@@ -27,6 +27,7 @@ void mc_region_destroy(mc_region_t* region) {
       }
     }
   }
+  free(region);
 }
 
 void mc_string_init(mc_string_t* str) {
