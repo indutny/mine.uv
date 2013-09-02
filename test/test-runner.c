@@ -84,7 +84,7 @@ void test_nbt_cycle() {
   ASSERT(r > 0, "Encode failed");
 
   /* Destroy */
-  mc_nbt_destroy(val);
+  mc_nbt_destroy(res);
 
   val = mc_nbt_parse(out, r, kNBTGZip);
   ASSERT(val != NULL, "Parse failed");
@@ -93,6 +93,8 @@ void test_nbt_cycle() {
   ASSERT(val->value.values.list[0]->type == kNBTShort, "Not short");
   ASSERT(val->value.values.list[1]->type == kNBTByte, "Not byte");
   ASSERT(val->value.values.list[2]->type == kNBTString, "Not string");
+  mc_nbt_destroy(val);
+  free(out);
 }
 
 
