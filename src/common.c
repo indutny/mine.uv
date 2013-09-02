@@ -25,10 +25,13 @@ void mc_region_destroy(mc_region_t* region) {
         free(region->column[x][z].chunks[y]);
         region->column[x][z].chunks[y] = NULL;
       }
+      free(region->column[x][z].compressed);
+      region->column[x][z].compressed = NULL;
     }
   }
   free(region);
 }
+
 
 void mc_string_init(mc_string_t* str) {
   str->data = NULL;

@@ -33,6 +33,7 @@
       "src/nbt-common.c",
       "src/nbt-encode.c",
       "src/nbt-parse.c",
+      "src/nbt-utils.c",
       "src/nbt-value.c",
     ],
   }]

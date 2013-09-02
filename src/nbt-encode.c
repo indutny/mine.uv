@@ -16,12 +16,12 @@ struct mc_nbt_encoder_s {
 static int mc_nbt__grow(mc_nbt_encoder_t* encoder, int size);
 static int mc_nbt__encode(mc_nbt_encoder_t* encoder,
                           int with_name,
-                          mc_nbt_value_t* val);
+                          mc_nbt_t* val);
 static mc_nbt__tag_t mc_nbt__type_to_tag(mc_nbt_type_t type);
 static int mc_nbt__encode_payload(mc_nbt_encoder_t* encoder,
-                                  mc_nbt_value_t* val);
+                                  mc_nbt_t* val);
 static int mc_nbt__encode_high_order(mc_nbt_encoder_t* encoder,
-                                     mc_nbt_value_t* val);
+                                     mc_nbt_t* val);
 static int mc_nbt__compress(mc_nbt_encoder_t* encoder,
                             mc_nbt_comp_t comp);
 
@@ -41,7 +41,7 @@ static int mc_nbt__compress(mc_nbt_encoder_t* encoder,
 static const int kEncodeIncrement = 1024;
 
 
-int mc_nbt_encode(mc_nbt_value_t* val,
+int mc_nbt_encode(mc_nbt_t* val,
                   mc_nbt_comp_t comp,
                   unsigned char** out) {
   int r;
@@ -95,7 +95,7 @@ int mc_nbt__grow(mc_nbt_encoder_t* encoder, int size) {
 
 int mc_nbt__encode(mc_nbt_encoder_t* encoder,
                    int with_name,
-                   mc_nbt_value_t* val) {
+                   mc_nbt_t* val) {
   mc_nbt__tag_t tag;
 
   tag = mc_nbt__type_to_tag(val->type);
@@ -134,7 +134,7 @@ mc_nbt__tag_t mc_nbt__type_to_tag(mc_nbt_type_t type) {
 }
 
 
-int mc_nbt__encode_payload(mc_nbt_encoder_t* encoder, mc_nbt_value_t* val) {
+int mc_nbt__encode_payload(mc_nbt_encoder_t* encoder, mc_nbt_t* val) {
   switch (val->type) {
     case kNBTByte:
       GROW(encoder, 1, {
@@ -203,7 +203,7 @@ int mc_nbt__encode_payload(mc_nbt_encoder_t* encoder, mc_nbt_value_t* val) {
 }
 
 
-int mc_nbt__encode_high_order(mc_nbt_encoder_t* encoder, mc_nbt_value_t* val) {
+int mc_nbt__encode_high_order(mc_nbt_encoder_t* encoder, mc_nbt_t* val) {
   int r;
   int32_t i;
   int with_name;

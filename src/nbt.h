@@ -3,7 +3,7 @@
 
 #include <stdint.h>  /* uint8_t, and friends */
 
-typedef struct mc_nbt_value_s mc_nbt_value_t;
+typedef struct mc_nbt_s mc_nbt_t;
 typedef enum mc_nbt_type_e mc_nbt_type_t;
 typedef enum mc_nbt_comp_e mc_nbt_comp_t;
 
@@ -32,7 +32,7 @@ enum mc_nbt_type_e {
   kNBTCompound
 };
 
-struct mc_nbt_value_s {
+struct mc_nbt_s {
   mc_nbt_type_t type;
   struct {
     const char* value;
@@ -63,35 +63,38 @@ struct mc_nbt_value_s {
     } str;
     struct {
       int32_t len;
-      mc_nbt_value_t* list[1];
+      mc_nbt_t* list[1];
     } values;
   } value;
 };
 
 /* Parser API */
-mc_nbt_value_t* mc_nbt_parse(const unsigned char* data,
+mc_nbt_t* mc_nbt_parse(const unsigned char* data,
                              int len,
                              mc_nbt_comp_t comp);
 
 /* Encoder API */
-int mc_nbt_encode(mc_nbt_value_t* val, mc_nbt_comp_t comp, unsigned char** out);
+int mc_nbt_encode(mc_nbt_t* val, mc_nbt_comp_t comp, unsigned char** out);
+
+/* Utils API */
+mc_nbt_t** mc_nbt_get(mc_nbt_t* val, const char* prop, int len);
 
 /* Value API */
-mc_nbt_value_t* mc_nbt_create_i8(const char* name, int name_len, int8_t val);
-mc_nbt_value_t* mc_nbt_create_i16(const char* name, int name_len, int16_t val);
-mc_nbt_value_t* mc_nbt_create_i32(const char* name, int name_len, int32_t val);
-mc_nbt_value_t* mc_nbt_create_i64(const char* name, int name_len, int64_t val);
-mc_nbt_value_t* mc_nbt_create_f32(const char* name, int name_len, float val);
-mc_nbt_value_t* mc_nbt_create_f64(const char* name, int name_len, double val);
-mc_nbt_value_t* mc_nbt_create_str(const char* name,
-                                  int name_len,
-                                  const char* value,
-                                  int value_len);
-mc_nbt_value_t* mc_nbt_create_i8l(const char* name, int name_len, int len);
-mc_nbt_value_t* mc_nbt_create_i32l(const char* name, int name_len, int len);
-mc_nbt_value_t* mc_nbt_create_list(const char* name, int name_len, int len);
-mc_nbt_value_t* mc_nbt_create_compound(const char* name, int name_len, int len);
+mc_nbt_t* mc_nbt_create_i8(const char* name, int name_len, int8_t val);
+mc_nbt_t* mc_nbt_create_i16(const char* name, int name_len, int16_t val);
+mc_nbt_t* mc_nbt_create_i32(const char* name, int name_len, int32_t val);
+mc_nbt_t* mc_nbt_create_i64(const char* name, int name_len, int64_t val);
+mc_nbt_t* mc_nbt_create_f32(const char* name, int name_len, float val);
+mc_nbt_t* mc_nbt_create_f64(const char* name, int name_len, double val);
+mc_nbt_t* mc_nbt_create_str(const char* name,
+                            int name_len,
+                            const char* value,
+                            int value_len);
+mc_nbt_t* mc_nbt_create_i8l(const char* name, int name_len, int len);
+mc_nbt_t* mc_nbt_create_i32l(const char* name, int name_len, int len);
+mc_nbt_t* mc_nbt_create_list(const char* name, int name_len, int len);
+mc_nbt_t* mc_nbt_create_compound(const char* name, int name_len, int len);
 
-void mc_nbt_destroy(mc_nbt_value_t* val);
+void mc_nbt_destroy(mc_nbt_t* val);
 
 #endif  /* SRC_NBT_H_ */

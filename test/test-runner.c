@@ -49,7 +49,7 @@ static unsigned char nbt_compressed_data[] = {
 
 
 void test_nbt_predefined() {
-  mc_nbt_value_t* val;
+  mc_nbt_t* val;
 
   val = mc_nbt_parse(nbt_compressed_data,
                      sizeof(nbt_compressed_data),
@@ -62,8 +62,8 @@ void test_nbt_predefined() {
 
 void test_nbt_cycle() {
   int r;
-  mc_nbt_value_t* res;
-  mc_nbt_value_t* val;
+  mc_nbt_t* res;
+  mc_nbt_t* val;
   unsigned char* out;
 
   /* Generate data */
@@ -100,13 +100,14 @@ void test_nbt_cycle() {
 
 void test_anvil() {
   int r;
+  int len;
   unsigned char* out;
   mc_region_t* reg;
 
-  r = mc_read_file("./test/anvil.mca", &out);
-  ASSERT(r > 0, "Read file failed");
+  len = mc_read_file("./test/anvil.mca", &out);
+  ASSERT(len > 0, "Read file failed");
 
-  r = mc_anvil_parse(out, r, &reg);
+  r = mc_anvil_parse(out, len, &reg);
   ASSERT(r == 0, "Anvil parse failed");
   mc_region_destroy(reg);
 }

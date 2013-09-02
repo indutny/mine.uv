@@ -369,8 +369,16 @@ struct mc_column_s {
   int32_t world_x;
   int32_t world_z;
   int64_t last_update;
+
   mc_biome_t biomes[16][16];
   mc_chunk_t* chunks[16];
+
+  /*
+   * Cached compressed data, released in case of any change
+   * NOTE: Applies only to the data compressed with Deflate method
+   */
+  char* compressed;
+  int compressed_len;
 
   /* TODO(indutny): Store entities too */
   /* TODO(indutny): Store heightmap too */
@@ -531,6 +539,7 @@ struct mc_frame_s {
 };
 
 /* Region utils */
+mc_region_t* mc_region_new();
 void mc_region_destroy(mc_region_t* region);
 
 /* String utils */

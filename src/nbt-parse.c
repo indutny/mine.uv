@@ -22,27 +22,27 @@ static int mc_nbt__decompress(const unsigned char* data,
                               int len,
                               mc_nbt_comp_t comp,
                               unsigned char** out);
-static mc_nbt_value_t* mc_nbt__parse(mc_nbt__parser_t* parser);
-static mc_nbt_value_t* mc_nbt__parse_payload(mc_nbt__tag_t tag,
-                                             mc_nbt__parser_t* parser);
-static mc_nbt_value_t* mc_nbt__alloc(mc_nbt__tag_t tag,
-                                     mc_nbt__parser_t* parser,
-                                     int additional_payload);
-static mc_nbt_value_t* mc_nbt__parse_primitive(mc_nbt__tag_t tag,
-                                               mc_nbt__parser_t* parser);
-static mc_nbt_value_t* mc_nbt__parse_array(mc_nbt__tag_t tag,
-                                           mc_nbt__parser_t* parser);
-static mc_nbt_value_t* mc_nbt__parse_high_order(mc_nbt__tag_t tag,
-                                                mc_nbt__parser_t* parser);
+static mc_nbt_t* mc_nbt__parse(mc_nbt__parser_t* parser);
+static mc_nbt_t* mc_nbt__parse_payload(mc_nbt__tag_t tag,
+                                       mc_nbt__parser_t* parser);
+static mc_nbt_t* mc_nbt__alloc(mc_nbt__tag_t tag,
+                               mc_nbt__parser_t* parser,
+                               int additional_payload);
+static mc_nbt_t* mc_nbt__parse_primitive(mc_nbt__tag_t tag,
+                                         mc_nbt__parser_t* parser);
+static mc_nbt_t* mc_nbt__parse_array(mc_nbt__tag_t tag,
+                                     mc_nbt__parser_t* parser);
+static mc_nbt_t* mc_nbt__parse_high_order(mc_nbt__tag_t tag,
+                                          mc_nbt__parser_t* parser);
 
 /* Used as tag end value */
-static mc_nbt_value_t mc_nbt__end;
+static mc_nbt_t mc_nbt__end;
 
 
-mc_nbt_value_t* mc_nbt_parse(const unsigned char* data,
-                             int len,
-                             mc_nbt_comp_t comp) {
-  mc_nbt_value_t* res;
+mc_nbt_t* mc_nbt_parse(const unsigned char* data,
+                       int len,
+                       mc_nbt_comp_t comp) {
+  mc_nbt_t* res;
   mc_nbt__parser_t parser;
   unsigned char* uncompressed;
 
@@ -75,9 +75,9 @@ int mc_nbt__decompress(const unsigned char* data,
 }
 
 
-mc_nbt_value_t* mc_nbt__parse(mc_nbt__parser_t* parser) {
+mc_nbt_t* mc_nbt__parse(mc_nbt__parser_t* parser) {
   mc_nbt__tag_t tag;
-  mc_nbt_value_t* res;
+  mc_nbt_t* res;
   const char* name;
   int name_len;
 
@@ -123,8 +123,7 @@ mc_nbt_value_t* mc_nbt__parse(mc_nbt__parser_t* parser) {
 }
 
 
-mc_nbt_value_t* mc_nbt__parse_payload(mc_nbt__tag_t tag,
-                                      mc_nbt__parser_t* parser) {
+mc_nbt_t* mc_nbt__parse_payload(mc_nbt__tag_t tag, mc_nbt__parser_t* parser) {
   switch (tag) {
     case kNBTTagByte:
     case kNBTTagShort:
@@ -146,10 +145,10 @@ mc_nbt_value_t* mc_nbt__parse_payload(mc_nbt__tag_t tag,
 }
 
 
-mc_nbt_value_t* mc_nbt__alloc(mc_nbt__tag_t tag,
-                              mc_nbt__parser_t* parser,
-                              int additional_payload) {
-  mc_nbt_value_t* res;
+mc_nbt_t* mc_nbt__alloc(mc_nbt__tag_t tag,
+                        mc_nbt__parser_t* parser,
+                        int additional_payload) {
+  mc_nbt_t* res;
 
   res = malloc(sizeof(*res) + additional_payload + parser->name_len);
   if (res == NULL)
@@ -181,9 +180,8 @@ mc_nbt_value_t* mc_nbt__alloc(mc_nbt__tag_t tag,
 }
 
 
-mc_nbt_value_t* mc_nbt__parse_primitive(mc_nbt__tag_t tag,
-                                        mc_nbt__parser_t* parser) {
-  mc_nbt_value_t* res;
+mc_nbt_t* mc_nbt__parse_primitive(mc_nbt__tag_t tag, mc_nbt__parser_t* parser) {
+  mc_nbt_t* res;
 
   res = mc_nbt__alloc(tag, parser, 0);
   if (res == NULL)
@@ -244,9 +242,8 @@ fatal:
 }
 
 
-mc_nbt_value_t* mc_nbt__parse_array(mc_nbt__tag_t tag,
-                                    mc_nbt__parser_t* parser) {
-  mc_nbt_value_t* res;
+mc_nbt_t* mc_nbt__parse_array(mc_nbt__tag_t tag, mc_nbt__parser_t* parser) {
+  mc_nbt_t* res;
   int32_t i;
   int additional_len;
   int32_t len;
@@ -333,11 +330,11 @@ fatal:
 }
 
 
-mc_nbt_value_t* mc_nbt__parse_high_order(mc_nbt__tag_t tag,
-                                         mc_nbt__parser_t* parser) {
-  mc_nbt_value_t* res;
-  mc_nbt_value_t* tmp;
-  mc_nbt_value_t* child;
+mc_nbt_t* mc_nbt__parse_high_order(mc_nbt__tag_t tag,
+                                   mc_nbt__parser_t* parser) {
+  mc_nbt_t* res;
+  mc_nbt_t* tmp;
+  mc_nbt_t* child;
   mc_nbt__tag_t child_tag;
   const char* name;
   int len;
