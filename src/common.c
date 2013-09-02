@@ -120,12 +120,12 @@ void mc_slot_destroy(mc_slot_t* slot) {
 }
 
 
-int mc_read_file(const char* path, char** out) {
+int mc_read_file(const char* path, unsigned char** out) {
   int r;
   int off;
   int fd;
   int len;
-  char* res;
+  unsigned char* res;
   struct stat s;
 
   fd = open(path, O_RDONLY);
@@ -164,7 +164,10 @@ open_failed:
 }
 
 
-int mc_write_file(const char* path, char* out, int len, int update) {
+int mc_write_file(const char* path,
+                  const unsigned char* out,
+                  int len,
+                  int update) {
   int r;
   int fd;
   int off;

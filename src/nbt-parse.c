@@ -18,7 +18,7 @@ static const int kCompoundCapacity = 4;
 
 typedef struct mc_nbt__parser_s mc_nbt__parser_t;
 
-static int mc_nbt__decompress(unsigned char* data,
+static int mc_nbt__decompress(const unsigned char* data,
                               int len,
                               mc_nbt_comp_t comp,
                               unsigned char** out);
@@ -39,14 +39,16 @@ static mc_nbt_value_t* mc_nbt__parse_high_order(mc_nbt__tag_t tag,
 static mc_nbt_value_t mc_nbt__end;
 
 
-mc_nbt_value_t* mc_nbt_parse(unsigned char* data, int len, mc_nbt_comp_t comp) {
+mc_nbt_value_t* mc_nbt_parse(const unsigned char* data,
+                             int len,
+                             mc_nbt_comp_t comp) {
   mc_nbt_value_t* res;
   mc_nbt__parser_t parser;
   unsigned char* uncompressed;
 
   if (comp == kNBTUncompressed) {
     parser.len = len;
-    parser.data = data;
+    parser.data = (unsigned char*) data;
   } else {
     parser.len = mc_nbt__decompress(data, len, comp, &uncompressed);
     parser.data = uncompressed;
@@ -65,7 +67,7 @@ mc_nbt_value_t* mc_nbt_parse(unsigned char* data, int len, mc_nbt_comp_t comp) {
 }
 
 
-int mc_nbt__decompress(unsigned char* data,
+int mc_nbt__decompress(const unsigned char* data,
                        int len,
                        mc_nbt_comp_t comp,
                        unsigned char** out) {
@@ -286,6 +288,7 @@ mc_nbt_value_t* mc_nbt__parse_array(mc_nbt__tag_t tag,
         return NULL;
 
       additional_len = (len - 1) * 4;
+      break;
     default:
       return NULL;
   }

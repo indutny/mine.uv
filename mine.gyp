@@ -20,6 +20,7 @@
       "include_dirs": [ "src" ],
     },
     "sources": [
+      "src/anvil.c",
       "src/client.c",
       "src/client-handshake.c",
       "src/client-protocol.c",

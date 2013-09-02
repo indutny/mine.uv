@@ -1,6 +1,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#include "anvil.h"
+#include "common.h"
 #include "nbt.h"
 #include "world.h"
 
@@ -94,12 +96,19 @@ void test_nbt_cycle() {
 }
 
 
-void world_test() {
-  mc_world_t* world;
+void test_anvil() {
+  int r;
+  unsigned char* out;
+  mc_nbt_value_t* res;
 
-  world = mc_world_new("world.dat");
-  ASSERT(world != NULL, "World load failed");
-  mc_world_release(world);
+  r = mc_read_file("./test/anvil.mca", &out);
+  ASSERT(r > 0, "Read file failed");
+
+  r = mc_anvil_parse(out, r, &res);
+  ASSERT(r == 0, "Anvil parse failed");
+  free(out);
+
+  mc_nbt_destroy(res);
 }
 
 
@@ -107,7 +116,7 @@ int main() {
   fprintf(stdout, "Running tests...\n");
   test_nbt_predefined();
   test_nbt_cycle();
-  world_test();
+  test_anvil();
   fprintf(stdout, "Done!\n");
 
   return 0;

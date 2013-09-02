@@ -23,7 +23,7 @@ enum mc_nbt__tag_e {
 static const int kGZipBits = 31;
 static const int kDeflateBits = 15;
 
-int mc_nbt__zlib(unsigned char* data,
+int mc_nbt__zlib(const unsigned char* data,
                  int len,
                  mc_nbt_comp_t comp,
                  int decompress,

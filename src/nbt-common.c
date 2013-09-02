@@ -4,10 +4,10 @@
 #include "nbt-private.h"
 #include "zlib.h"
 
-static const int kZlibIncrement = 1024;
+static const int kZlibIncrement = 16384;
 
 
-int mc_nbt__zlib(unsigned char* data,
+int mc_nbt__zlib(const unsigned char* data,
                  int len,
                  mc_nbt_comp_t comp,
                  int decompress,
@@ -31,11 +31,11 @@ int mc_nbt__zlib(unsigned char* data,
   if (r != Z_OK)
     return -1;
 
-  stream.next_in = data;
+  stream.next_in = (unsigned char*) data;
   stream.avail_in = len;
 
   /* NBT should be really good at compressing */
-  out_len = decompress ? 2 * len : len;
+  out_len = decompress ? 3 * len : len;
   *out = malloc(out_len);
   if (*out == NULL)
     goto fatal;
@@ -68,7 +68,7 @@ int mc_nbt__zlib(unsigned char* data,
     out_len += kZlibIncrement;
   } while (1);
 
-  if (stream.avail_in != 0)
+  if (r != Z_STREAM_END)
     goto fatal;
 
   if (decompress)

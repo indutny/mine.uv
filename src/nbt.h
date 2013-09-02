@@ -45,6 +45,10 @@ struct mc_nbt_value_s {
     int64_t i64;
     float f32;
     double f64;
+    /*
+     * NOTE: Its important to have similar length type in all lists,
+     * as we might use it for interoperation
+     */
     struct {
       int32_t len;
       int8_t list[1];
@@ -54,7 +58,7 @@ struct mc_nbt_value_s {
       int32_t list[1];
     } i32_list;
     struct {
-      int16_t len;
+      int32_t len;
       char value[1];
     } str;
     struct {
@@ -65,7 +69,9 @@ struct mc_nbt_value_s {
 };
 
 /* Parser API */
-mc_nbt_value_t* mc_nbt_parse(unsigned char* data, int len, mc_nbt_comp_t comp);
+mc_nbt_value_t* mc_nbt_parse(const unsigned char* data,
+                             int len,
+                             mc_nbt_comp_t comp);
 
 /* Encoder API */
 int mc_nbt_encode(mc_nbt_value_t* val, mc_nbt_comp_t comp, unsigned char** out);

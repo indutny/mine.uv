@@ -511,7 +511,10 @@ void mc_slot_init(mc_slot_t* slot);
 void mc_slot_destroy(mc_slot_t* slot);
 
 /* File utilities, should be called from worker threads */
-int mc_read_file(const char* path, char** out);
-int mc_write_file(const char* path, char* out, int len, int update);
+int mc_read_file(const char* path, unsigned char** out);
+int mc_write_file(const char* path,
+                  const unsigned char* out,
+                  int len,
+                  int update);
 
 #endif  /* SRC_COMMON_H_ */
