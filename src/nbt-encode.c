@@ -232,7 +232,7 @@ int mc_nbt__encode_high_order(mc_nbt_encoder_t* encoder, mc_nbt_value_t* val) {
 
   /* Insert End tag */
   if (val->type == kNBTCompound) {
-    GROW(encoder, 0, {
+    GROW(encoder, 1, {
       *PTR(encoder, uint8_t, 0) = kNBTTagEnd;
     });
   }
