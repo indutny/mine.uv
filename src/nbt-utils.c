@@ -61,11 +61,11 @@ int mc_nbt_read(mc_nbt_t* val,
     case kNBTByteArray:
     case kNBTIntArray:
     case kNBTString:
-      byte_size = r->value.i8_list.len * (type == kNBTIntArray ? 4 : 1);
+      byte_size = r->value.i8l.len * (type == kNBTIntArray ? 4 : 1);
       tmp = malloc(byte_size);
       if (tmp == NULL)
         return -1;
-      memcpy(tmp, r->value.i8_list.list, byte_size);
+      memcpy(tmp, r->value.i8l.list, byte_size);
       *(void**) to = tmp;
       break;
     default:

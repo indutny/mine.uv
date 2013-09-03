@@ -350,15 +350,15 @@ mc_nbt_t* mc_nbt__parse_array(mc_nbt__tag_t tag, mc_nbt_parser_t* parser) {
 
       /* Perform byte rotation in-place if possible */
       if (additional_len == 0) {
-        res->value.i32_list.list = (int32_t*) parser->data;
+        res->value.i32l.list = (int32_t*) parser->data;
         for (i = 0; i < len; i++)
-          res->value.i32_list.list[i] = ntohl(res->value.i32_list.list[i]);
+          res->value.i32l.list[i] = ntohl(res->value.i32l.list[i]);
         parser->data += 4 * len;
         parser->len -= 4 * len;
       } else {
-        res->value.i32_list.list = (int32_t*) (&res->value.i32_list.list + 1);
+        res->value.i32l.list = (int32_t*) (&res->value.i32l.list + 1);
         for (i = 0; i < len; i++) {
-          res->value.i32_list.list[i] = ntohl(*(uint32_t*) parser->data);
+          res->value.i32l.list[i] = ntohl(*(uint32_t*) parser->data);
           parser->data += 4;
           parser->len -= 4;
         }

@@ -168,11 +168,11 @@ int mc_nbt__encode_payload(mc_nbt_encoder_t* encoder, mc_nbt_t* val) {
       });
       break;
     case kNBTByteArray:
-      GROW(encoder, 4 + val->value.i8_list.len, {
-        *PTR(encoder, int32_t, 0) = htonl(val->value.i8_list.len);
+      GROW(encoder, 4 + val->value.i8l.len, {
+        *PTR(encoder, int32_t, 0) = htonl(val->value.i8l.len);
         memcpy(PTR(encoder, char, 4),
-               val->value.i8_list.list,
-               val->value.i8_list.len);
+               val->value.i8l.list,
+               val->value.i8l.len);
       });
       break;
     case kNBTString:
@@ -184,11 +184,11 @@ int mc_nbt__encode_payload(mc_nbt_encoder_t* encoder, mc_nbt_t* val) {
       });
       break;
     case kNBTIntArray:
-      GROW(encoder, 4 + 4 * val->value.i32_list.len, {
-        *PTR(encoder, int32_t, 0) = htonl(val->value.i32_list.len);
+      GROW(encoder, 4 + 4 * val->value.i32l.len, {
+        *PTR(encoder, int32_t, 0) = htonl(val->value.i32l.len);
         memcpy(PTR(encoder, char, 4),
-               val->value.i32_list.list,
-               val->value.i32_list.len * 4);
+               val->value.i32l.list,
+               val->value.i32l.len * 4);
       });
       break;
     /* High-order structures */

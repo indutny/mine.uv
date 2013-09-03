@@ -95,8 +95,8 @@ mc_nbt_t* mc_nbt_create_i8l(const char* name, int name_len, int len) {
 
   res = mc_nbt__create(name, name_len, kNBTByteArray, len);
   if (res != NULL) {
-    res->value.i8_list.list = (int8_t*) (&res->value.i8_list.list + 1);
-    res->value.i8_list.len = len;
+    res->value.i8l.list = (int8_t*) (&res->value.i8l.list + 1);
+    res->value.i8l.len = len;
   }
 
   return res;
@@ -108,8 +108,8 @@ mc_nbt_t* mc_nbt_create_i32l(const char* name, int name_len, int len) {
 
   res = mc_nbt__create(name, name_len, kNBTIntArray, 4 * len);
   if (res != NULL) {
-    res->value.i32_list.list = (int32_t*) (&res->value.i32_list.list + 1);
-    res->value.i32_list.len = len;
+    res->value.i32l.list = (int32_t*) (&res->value.i32l.list + 1);
+    res->value.i32l.len = len;
   }
 
   return res;

@@ -70,11 +70,11 @@ struct mc_nbt_s {
     struct {
       int32_t len;
       int8_t* list;
-    } i8_list;
+    } i8l;
     struct {
       int32_t len;
       int32_t* list;
-    } i32_list;
+    } i32l;
     struct {
       int32_t len;
       char* value;

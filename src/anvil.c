@@ -157,12 +157,12 @@ int mc_anvil__parse_biomes(mc_nbt_t* level, mc_column_t* col) {
 
   array_size = ARRAY_SIZE(col->biomes) * ARRAY_SIZE(col->biomes[0]);
   biomes = NBT_GET(level, "Biomes", kNBTByteArray);
-  if (biomes == NULL || biomes->value.i8_list.len != array_size)
+  if (biomes == NULL || biomes->value.i8l.len != array_size)
     return -1;
   for (x = 0; x < ARRAY_SIZE(col->biomes); x++) {
     for (z = 0; z < ARRAY_SIZE(col->biomes[0]); z++) {
       off = x + z * ARRAY_SIZE(col->biomes);
-      col->biomes[x][z] = (mc_biome_t) biomes->value.i8_list.list[off];
+      col->biomes[x][z] = (mc_biome_t) biomes->value.i8l.list[off];
     }
   }
 
@@ -212,10 +212,10 @@ int mc_anvil__parse_chunks(mc_nbt_t* level, mc_column_t* col) {
 
     if (blocks == NULL || block_lights == NULL || sky_lights == NULL)
       goto read_chunks_failed;
-    if (blocks->value.i8_list.len != array_size ||
-        block_lights->value.i8_list.len != (array_size / 2) ||
-        sky_lights->value.i8_list.len != (array_size / 2) ||
-        block_datas->value.i8_list.len != (array_size / 2)) {
+    if (blocks->value.i8l.len != array_size ||
+        block_lights->value.i8l.len != (array_size / 2) ||
+        sky_lights->value.i8l.len != (array_size / 2) ||
+        block_datas->value.i8l.len != (array_size / 2)) {
       goto read_chunks_failed;
     }
 
@@ -227,17 +227,17 @@ int mc_anvil__parse_chunks(mc_nbt_t* level, mc_column_t* col) {
                 y * ARRAY_SIZE(mchunk->blocks) * ARRAY_SIZE(mchunk->blocks[0]);
 
           block = &mchunk->blocks[x][y][z];
-          block->id = (mc_block_id_t) blocks->value.i8_list.list[off];
+          block->id = (mc_block_id_t) blocks->value.i8l.list[off];
           if (off % 2 == 0) {
             block->light =
-                (uint8_t) block_lights->value.i8_list.list[off >> 1] >> 4;
+                (uint8_t) block_lights->value.i8l.list[off >> 1] >> 4;
             block->skylight =
-                (uint8_t) sky_lights->value.i8_list.list[off >> 1] >> 4;
+                (uint8_t) sky_lights->value.i8l.list[off >> 1] >> 4;
           } else {
             block->light =
-                (uint8_t) block_lights->value.i8_list.list[off >> 1] & 0xf;
+                (uint8_t) block_lights->value.i8l.list[off >> 1] & 0xf;
             block->skylight =
-                (uint8_t) sky_lights->value.i8_list.list[off >> 1] & 0xf;
+                (uint8_t) sky_lights->value.i8l.list[off >> 1] & 0xf;
           }
         }
       }
