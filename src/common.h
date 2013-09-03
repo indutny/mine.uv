@@ -3,6 +3,64 @@
 
 #include <stdint.h>  /* uint8_t */
 
+#define MC_ENTITY_LIST(ENTITY_DECL) \
+    ENTITY_DECL(DroppedItem, 0x1, "Item") \
+    ENTITY_DECL(ExperienceOrb, 0x2, "XPOrb") \
+    ENTITY_DECL(LeadKnot, 0x8, "LeashKnot") \
+    ENTITY_DECL(Painting, 0x9, "Painting") \
+    ENTITY_DECL(ItemFrame, 0x12, "ItemFrame") \
+    ENTITY_DECL(ShotArrow, 0xA, "Arrow") \
+    ENTITY_DECL(ThrownSnowball, 0xB, "Snowball") \
+    ENTITY_DECL(GhastFireball, 0xC, "Fireball") \
+    ENTITY_DECL(BlazeFireball, 0xD, "SmallFireball") \
+    ENTITY_DECL(ThrownEnderPearl, 0xE, "ThrownEnderpearl") \
+    ENTITY_DECL(ThrownEyeOfEnder, 0xF, "EyeOfEnderSignal") \
+    ENTITY_DECL(ThrownSplashPotion, 0x10, "ThrownPotion") \
+    ENTITY_DECL(ThrownBottleEnchanting, 0x11, "ThrownExpBottle") \
+    ENTITY_DECL(WitherSkull, 0x13, "WitherSkull") \
+    ENTITY_DECL(FireworkRocket, 0x16, "FireworksRocketEntity") \
+    ENTITY_DECL(PrimedTNT, 0x14, "PrimedTnt") \
+    ENTITY_DECL(FallingBlock, 0x15, "FallingSand") \
+    ENTITY_DECL(Boat, 0x29, "Boat") \
+    ENTITY_DECL(Minecart, 0x2A, "MinecartRideable") \
+    ENTITY_DECL(MinecartWithChest, 0x2B, "MinecartChest") \
+    ENTITY_DECL(MinecartWithFurnace, 0x2C, "MinecartFurnace") \
+    ENTITY_DECL(MinecartWithTNT, 0x2D, "MinecartTNT") \
+    ENTITY_DECL(MinecartWithHopper, 0x2E, "MinecartHopper") \
+    ENTITY_DECL(MinecartWithSpawner, 0x2F, "MinecartSpawner") \
+    ENTITY_DECL(Mob, 0x30, "Mob") \
+    ENTITY_DECL(Monster, 0x31, "Monster") \
+    ENTITY_DECL(Creeper, 0x32, "Creeper") \
+    ENTITY_DECL(Skeleton, 0x33, "Skeleton") \
+    ENTITY_DECL(Spider, 0x34, "Spider") \
+    ENTITY_DECL(Giant, 0x35, "Giant") \
+    ENTITY_DECL(Zombie, 0x36, "Zombie") \
+    ENTITY_DECL(Slime, 0x37, "Slime") \
+    ENTITY_DECL(Ghast, 0x38, "Ghast") \
+    ENTITY_DECL(ZombiePigman, 0x39, "PigZombie") \
+    ENTITY_DECL(Enderman, 0x3A, "Enderman") \
+    ENTITY_DECL(CaveSpider, 0x3B, "CaveSpider") \
+    ENTITY_DECL(Silverfish, 0x3C, "Silverfish") \
+    ENTITY_DECL(Blaze, 0x3D, "Blaze") \
+    ENTITY_DECL(MagmaCube, 0x3E, "LavaSlime") \
+    ENTITY_DECL(EnderDragon, 0x3F, "EnderDragon") \
+    ENTITY_DECL(Wither, 0x40, "WitherBoss") \
+    ENTITY_DECL(Witch, 0x42, "Witch") \
+    ENTITY_DECL(Bat, 0x41, "Bat") \
+    ENTITY_DECL(Pig, 0x5A, "Pig") \
+    ENTITY_DECL(Sheep, 0x5B, "Sheep") \
+    ENTITY_DECL(Cow, 0x5C, "Cow") \
+    ENTITY_DECL(Chicken, 0x5D, "Chicken") \
+    ENTITY_DECL(Squid, 0x5E, "Squid") \
+    ENTITY_DECL(Wolf, 0x5F, "Wolf") \
+    ENTITY_DECL(Mooshroom, 0x60, "MushroomCow") \
+    ENTITY_DECL(SnowGolem, 0x61, "SnowMan") \
+    ENTITY_DECL(Ocelot, 0x62, "Ozelot") \
+    ENTITY_DECL(IronGolem, 0x63, "VillagerGolem") \
+    ENTITY_DECL(Horse, 0x64, "EntityHorse") \
+    ENTITY_DECL(Villager, 0x78, "Villager") \
+    ENTITY_DECL(EnderCrystal, 0xC8, "EnderCrystal")
+
 typedef enum mc_frame_type_e mc_frame_type_t;
 typedef enum mc_client_status_e mc_client_status_t;
 typedef enum mc_digging_status_e mc_digging_status_t;
@@ -11,6 +69,7 @@ typedef enum mc_animation_e mc_animation_t;
 typedef enum mc_entity_action_e mc_entity_action_t;
 typedef enum mc_biome_e mc_biome_t;
 typedef enum mc_block_id_e mc_block_id_t;
+typedef enum mc_entity_id_e mc_entity_id_t;
 typedef struct mc_frame_s mc_frame_t;
 typedef struct mc_string_s mc_string_t;
 typedef struct mc_slot_s mc_slot_t;
@@ -18,6 +77,7 @@ typedef struct mc_region_s mc_region_t;
 typedef struct mc_column_s mc_column_t;
 typedef struct mc_chunk_s mc_chunk_t;
 typedef struct mc_block_s mc_block_t;
+typedef struct mc_entity_s mc_entity_t;
 
 enum mc_frame_type_e {
   /* Sent by both */
@@ -338,6 +398,16 @@ enum mc_block_id_e {
   kMCBlockOfCoal = 0xAD
 };
 
+#define ENTITY_DECL(id, value, str) kMCEntity##id = value,
+
+enum mc_entity_id_e {
+  MC_ENTITY_LIST(ENTITY_DECL)
+  kMCEntityPlayer = 0xfe,
+  kMCEntityUnknown = 0xff
+};
+
+#undef ENTITY_DECL
+
 struct mc_string_s {
   const uint16_t* data;
   uint16_t len;
@@ -360,6 +430,24 @@ struct mc_block_s {
   uint8_t skylight;
 };
 
+struct mc_entity_s {
+  mc_entity_id_t id;
+  int8_t on_ground;
+  int8_t invulnerable;
+  int16_t air;
+  int16_t fire;
+  int16_t health;
+  float fall_distance;
+  double motion_x;
+  double motion_y;
+  double motion_z;
+  double pos_x;
+  double pos_y;
+  double pos_z;
+  float yaw;
+  float pitch;
+};
+
 struct mc_chunk_s {
   mc_block_t blocks[16][16][16];
 };
@@ -372,15 +460,9 @@ struct mc_column_s {
 
   mc_biome_t biomes[16][16];
   mc_chunk_t* chunks[16];
+  mc_entity_t* entities;
+  int entity_count;
 
-  /*
-   * Cached compressed data, released in case of any change
-   * NOTE: Applies only to the data compressed with Deflate method
-   */
-  char* compressed;
-  int compressed_len;
-
-  /* TODO(indutny): Store entities too */
   /* TODO(indutny): Store heightmap too */
 };
 
@@ -550,6 +632,9 @@ void mc_string_set(mc_string_t* str, const uint16_t* data, int len);
 int mc_string_copy(mc_string_t* to, mc_string_t* from);
 char* mc_string_to_ascii(mc_string_t* str);
 int mc_string_from_ascii(mc_string_t* to, const char* from);
+
+/* Entity utils */
+mc_entity_id_t mc_entity_str_to_id(const char* val, int len);
 
 /* Slot utils */
 void mc_slot_init(mc_slot_t* slot);

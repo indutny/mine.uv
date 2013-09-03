@@ -10,6 +10,8 @@
 static int mc_anvil__parse_column(mc_nbt_t* nbt, mc_column_t* col);
 static int mc_anvil__parse_biomes(mc_nbt_t* level, mc_column_t* col);
 static int mc_anvil__parse_chunks(mc_nbt_t* level, mc_column_t* col);
+static mc_entity_t* mc_anvil__parse_entities(mc_nbt_t* level, int* count);
+static int mc_anvil__parse_entity(mc_nbt_t* nbt, mc_entity_t* entity);
 
 static const int kHeaderSize = 1024;  /* 32 * 32 */
 static const int kSectorSize = 4096;
@@ -23,6 +25,14 @@ static const int kSectorSize = 4096;
       r = mc_nbt_read((obj), (prop), sizeof((prop)) - 1, (type), (to)); \
       if (r != 0) \
         return r; \
+    } while (0)
+
+#define NBT_OPT_READ(obj, prop, type, to, def) \
+    do { \
+      int r; \
+      r = mc_nbt_read((obj), (prop), sizeof((prop)) - 1, (type), (to)); \
+      if (r != 0) \
+        *(to) = def; \
     } while (0)
 
 int mc_anvil_parse(const unsigned char* data, int len, mc_region_t** out) {
@@ -85,15 +95,6 @@ int mc_anvil_parse(const unsigned char* data, int len, mc_region_t** out) {
       if (nbt == NULL)
         goto fatal;
 
-      /* Store cached deflated value */
-      if (comp == 2) {
-        col->compressed = malloc(body_len - 1);
-        if (col->compressed != NULL) {
-          col->compressed_len = body_len - 1;
-          memcpy(col->compressed, data + offset + 5, col->compressed_len);
-        }
-      }
-
       /* Parse column's NBT */
       r = mc_anvil__parse_column(nbt, col);
 
@@ -134,14 +135,19 @@ int mc_anvil__parse_column(mc_nbt_t* nbt, mc_column_t* col) {
   NBT_READ(level, "zPos", kNBTInt, &col->world_z);
   NBT_READ(level, "LastUpdate", kNBTLong, &col->last_update);
 
-  /* Read biomes */
+  /* Parse biomes */
   r = mc_anvil__parse_biomes(level, col);
   if (r != 0)
     return r;
 
-  /* Read chunks */
+  /* Parse chunks */
   r = mc_anvil__parse_chunks(level, col);
   if (r != 0)
+    return r;
+
+  /* Parse entities */
+  col->entities = mc_anvil__parse_entities(level, &col->entity_count);
+  if (col->entities == NULL)
     return r;
 
   return 0;
@@ -229,7 +235,7 @@ int mc_anvil__parse_chunks(mc_nbt_t* level, mc_column_t* col) {
                 z * ARRAY_SIZE(mchunk->blocks) +
                 y * ARRAY_SIZE(mchunk->blocks) * ARRAY_SIZE(mchunk->blocks[0]);
 
-          block = &mchunk->blocks[x][y][z];
+          block = &mchunk->blocks[x][z][y];
           block->id = (mc_block_id_t) blocks->value.i8l.list[off];
 
           block_light = (uint8_t) block_lights->value.i8l.list[off >> 1];
@@ -259,4 +265,87 @@ read_chunks_failed:
   }
 
   return -1;
+}
+
+
+mc_entity_t* mc_anvil__parse_entities(mc_nbt_t* level, int* count) {
+  mc_nbt_t* entities;
+  mc_nbt_t* entity;
+  mc_entity_t* res;
+  int i;
+  int r;
+
+  entities = NBT_GET(level, "Entities", kNBTList);
+  if (entities == NULL)
+    goto get_entities_failed;
+
+  res = malloc(sizeof(*res) * entities->value.values.len);
+  if (res == NULL)
+    goto get_entities_failed;
+
+  for (i = 0; i < entities->value.values.len; i++) {
+    entity = entities->value.values.list[i];
+    r = mc_anvil__parse_entity(entity, &res[i]);
+    if (r != 0)
+      goto read_entities_failed;
+  }
+  *count = entities->value.values.len;
+
+  return res;
+
+read_entities_failed:
+  free(res);
+
+get_entities_failed:
+  return NULL;
+}
+
+
+int mc_anvil__parse_entity(mc_nbt_t* nbt, mc_entity_t* entity) {
+  mc_nbt_t* id;
+  mc_nbt_t* list;
+
+  id = NBT_GET(nbt, "id", kNBTString);
+  if (id == NULL)
+    entity->id = kMCEntityPlayer;
+  else
+    entity->id = mc_entity_str_to_id(id->value.str.value, id->value.str.len);
+
+  NBT_OPT_READ(nbt, "OnGround", kNBTByte, &entity->on_ground, 0);
+  NBT_OPT_READ(nbt, "Invulnerable", kNBTByte, &entity->invulnerable, 0);
+  NBT_OPT_READ(nbt, "Air", kNBTShort, &entity->air, 0);
+  NBT_OPT_READ(nbt, "Fire", kNBTShort, &entity->fire, 0);
+  NBT_OPT_READ(nbt, "Health", kNBTShort, &entity->health, 0);
+  NBT_OPT_READ(nbt, "FallDistance", kNBTFloat, &entity->fall_distance, 0.0);
+
+  list = NBT_GET(nbt, "Pos", kNBTList);
+  if (list == NULL ||
+      list->value.values.len != 3 ||
+      list->value.values.list[0]->type != kNBTDouble) {
+    return -1;
+  }
+  entity->pos_x = list->value.values.list[0]->value.f64;
+  entity->pos_y = list->value.values.list[1]->value.f64;
+  entity->pos_z = list->value.values.list[2]->value.f64;
+
+  list = NBT_GET(nbt, "Motion", kNBTList);
+  if (list == NULL ||
+      list->value.values.len != 3 ||
+      list->value.values.list[0]->type != kNBTDouble) {
+    return -1;
+  }
+  entity->motion_x = list->value.values.list[0]->value.f64;
+  entity->motion_y = list->value.values.list[1]->value.f64;
+  entity->motion_z = list->value.values.list[2]->value.f64;
+
+  list = NBT_GET(nbt, "Rotation", kNBTList);
+  if (list == NULL ||
+      list->value.values.len != 2 ||
+      list->value.values.list[0]->type != kNBTFloat) {
+    return -1;
+  }
+  entity->yaw = list->value.values.list[0]->value.f32;
+  entity->pitch = list->value.values.list[1]->value.f32;
+
+  return 0;
 }

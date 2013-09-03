@@ -40,7 +40,7 @@
         },
       },
       'Release': {
-        'cflags': [ '-O3', '-ffunction-sections', '-fdata-sections' ],
+        'cflags': [ '-O3' ],
         'conditions': [
           ['target_arch=="x64"', {
             'msvs_configuration_platform': 'x64',

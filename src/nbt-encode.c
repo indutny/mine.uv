@@ -146,25 +146,17 @@ int mc_nbt__encode_payload(mc_nbt_encoder_t* encoder, mc_nbt_t* val) {
         *PTR(encoder, int16_t, 0) = htons(val->value.i16);
       });
       break;
+    case kNBTFloat:
     case kNBTInt:
       GROW(encoder, 4, {
         *PTR(encoder, int32_t, 0) = htonl(val->value.i32);
       });
       break;
+    case kNBTDouble:
     case kNBTLong:
       GROW(encoder, 8, {
         *PTR(encoder, int32_t, 0) = htonl(val->value.i64 >> 32);
         *PTR(encoder, int32_t, 4) = htonl(val->value.i64 & 0xffffffff);
-      });
-      break;
-    case kNBTFloat:
-      GROW(encoder, 4, {
-        *PTR(encoder, float, 0) = val->value.f32;
-      });
-      break;
-    case kNBTDouble:
-      GROW(encoder, 8, {
-        *PTR(encoder, double, 0) = val->value.f64;
       });
       break;
     case kNBTByteArray:

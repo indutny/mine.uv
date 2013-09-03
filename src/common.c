@@ -3,7 +3,7 @@
 #include <fcntl.h>  /* open, close */
 #include <stdio.h>  /* rename */
 #include <stdlib.h>  /* malloc */
-#include <string.h>  /* memcpy */
+#include <string.h>  /* memcpy, strncmp */
 #include <sys/stat.h>  /* stat */
 #include <unistd.h>  /* read, write */
 
@@ -18,15 +18,22 @@ void mc_region_destroy(mc_region_t* region) {
   unsigned int x;
   unsigned int y;
   unsigned int z;
+  mc_column_t* col;
 
   for (x = 0; x < ARRAY_SIZE(region->column); x++) {
     for (z = 0; z < ARRAY_SIZE(region->column[x]); z++) {
-      for (y = 0; y < ARRAY_SIZE(region->column[x][z].chunks); y++) {
-        free(region->column[x][z].chunks[y]);
-        region->column[x][z].chunks[y] = NULL;
+      col = &region->column[x][z];
+
+      /* Free chunks */
+      for (y = 0; y < ARRAY_SIZE(col->chunks); y++) {
+        free(col->chunks[y]);
+        col->chunks[y] = NULL;
       }
-      free(region->column[x][z].compressed);
-      region->column[x][z].compressed = NULL;
+
+      /* Free entities */
+      free(col->entities);
+      col->entities = NULL;
+      col->entity_count = 0;
     }
   }
   free(region);
@@ -121,6 +128,17 @@ int mc_string_from_ascii(mc_string_t* to, const char* from) {
   to->len = len;
 
   return 0;
+}
+
+#define ENTITY_TO_STR_DECL(id, value, str) \
+    if (len == (sizeof(str) - 1) && strncmp(val, str, len) == 0) { \
+      return kMCEntity##id; \
+    } else
+
+mc_entity_id_t mc_entity_str_to_id(const char* val, int len) {
+  MC_ENTITY_LIST(ENTITY_TO_STR_DECL) {
+    return kMCEntityUnknown;
+  }
 }
 
 

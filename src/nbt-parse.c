@@ -224,6 +224,7 @@ mc_nbt_t* mc_nbt__parse_primitive(mc_nbt__tag_t tag, mc_nbt_parser_t* parser) {
       parser->data += 2;
       parser->len -= 2;
       break;
+    case kNBTTagFloat:
     case kNBTTagInt:
       if (parser->len < 4)
         goto fatal;
@@ -231,25 +232,12 @@ mc_nbt_t* mc_nbt__parse_primitive(mc_nbt__tag_t tag, mc_nbt_parser_t* parser) {
       parser->data += 4;
       parser->len -= 4;
       break;
+    case kNBTTagDouble:
     case kNBTTagLong:
       if (parser->len < 8)
         goto fatal;
       res->value.i64 = ((int64_t) ntohl(*(int32_t*) parser->data) << 32) |
                        ntohl(*(int32_t*) parser->data);
-      parser->data += 8;
-      parser->len -= 8;
-      break;
-    case kNBTTagFloat:
-      if (parser->len < 4)
-        goto fatal;
-      res->value.f32 = *(float*) parser->data;
-      parser->data += 4;
-      parser->len -= 4;
-      break;
-    case kNBTTagDouble:
-      if (parser->len < 8)
-        goto fatal;
-      res->value.f64 = *(double*) parser->data;
       parser->data += 8;
       parser->len -= 8;
       break;
