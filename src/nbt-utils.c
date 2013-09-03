@@ -3,7 +3,10 @@
 
 #include "nbt.h"
 
-mc_nbt_t* mc_nbt_get(mc_nbt_t* val, const char* prop, int len) {
+mc_nbt_t* mc_nbt_get(mc_nbt_t* val,
+                     const char* prop,
+                     int len,
+                     mc_nbt_type_t type) {
   int i;
   mc_nbt_t* item;
   if (val->type != kNBTCompound)
@@ -15,6 +18,8 @@ mc_nbt_t* mc_nbt_get(mc_nbt_t* val, const char* prop, int len) {
         strncmp(item->name.value, prop, len) != 0) {
       continue;
     }
+    if (item->type != type)
+      return NULL;
     return item;
   }
 
@@ -31,8 +36,8 @@ int mc_nbt_read(mc_nbt_t* val,
   int byte_size;
   unsigned char* tmp;
 
-  r = mc_nbt_get(val, prop, len);
-  if (r == NULL || r->type != type)
+  r = mc_nbt_get(val, prop, len, type);
+  if (r == NULL)
     return -1;
   switch (type) {
     case kNBTByte:

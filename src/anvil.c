@@ -8,12 +8,14 @@
 #include "common-private.h"  /* ARRAY_SIZE */
 
 static int mc_anvil__parse_column(mc_nbt_t* nbt, mc_column_t* col);
+static int mc_anvil__parse_biomes(mc_nbt_t* level, mc_column_t* col);
+static int mc_anvil__parse_chunks(mc_nbt_t* level, mc_column_t* col);
 
 static const int kHeaderSize = 1024;  /* 32 * 32 */
 static const int kSectorSize = 4096;
 
-#define NBT_GET(obj, prop) \
-    mc_nbt_get((obj), (prop), sizeof((prop)) - 1)
+#define NBT_GET(obj, prop, type) \
+    mc_nbt_get((obj), (prop), sizeof((prop)) - 1, (type))
 
 #define NBT_READ(obj, prop, type, to) \
     do { \
@@ -120,23 +122,11 @@ int mc_anvil_encode(mc_region_t* reg, unsigned char** out) {
 
 
 int mc_anvil__parse_column(mc_nbt_t* nbt, mc_column_t* col) {
+  int r;
   mc_nbt_t* level;
-  mc_nbt_t* biomes;
-  mc_nbt_t* chunks;
-  mc_nbt_t* chunk;
-  mc_nbt_t* blocks;
-  mc_nbt_t* block_lights;
-  mc_nbt_t* sky_lights;
-  mc_chunk_t* mchunk;
-  int array_size;
-  int off;
-  int i;
-  unsigned int x;
-  int8_t y;
-  unsigned int z;
 
-  level = NBT_GET(nbt, "Level");
-  if (level == NULL || level->type != kNBTCompound)
+  level = NBT_GET(nbt, "Level", kNBTCompound);
+  if (level == NULL)
     return -1;
 
   NBT_READ(level, "TerrainPopulated", kNBTByte, &col->populated);
@@ -145,13 +135,30 @@ int mc_anvil__parse_column(mc_nbt_t* nbt, mc_column_t* col) {
   NBT_READ(level, "LastUpdate", kNBTLong, &col->last_update);
 
   /* Read biomes */
+  r = mc_anvil__parse_biomes(level, col);
+  if (r != 0)
+    return r;
+
+  /* Read chunks */
+  r = mc_anvil__parse_chunks(level, col);
+  if (r != 0)
+    return r;
+
+  return 0;
+}
+
+
+int mc_anvil__parse_biomes(mc_nbt_t* level, mc_column_t* col) {
+  unsigned int x;
+  unsigned int z;
+  int off;
+  int array_size;
+  mc_nbt_t* biomes;
+
   array_size = ARRAY_SIZE(col->biomes) * ARRAY_SIZE(col->biomes[0]);
-  biomes = NBT_GET(level, "Biomes");
-  if (biomes == NULL ||
-      biomes->type != kNBTByteArray ||
-      biomes->value.i8_list.len != array_size) {
+  biomes = NBT_GET(level, "Biomes", kNBTByteArray);
+  if (biomes == NULL || biomes->value.i8_list.len != array_size)
     return -1;
-  }
   for (x = 0; x < ARRAY_SIZE(col->biomes); x++) {
     for (z = 0; z < ARRAY_SIZE(col->biomes[0]); z++) {
       off = x + z * ARRAY_SIZE(col->biomes);
@@ -159,9 +166,28 @@ int mc_anvil__parse_column(mc_nbt_t* nbt, mc_column_t* col) {
     }
   }
 
-  /* Read chunks */
-  chunks = NBT_GET(level, "Sections");
-  if (chunks == NULL || chunks->type != kNBTList)
+  return 0;
+}
+
+
+int mc_anvil__parse_chunks(mc_nbt_t* level, mc_column_t* col) {
+  int i;
+  unsigned x;
+  int8_t y;
+  unsigned z;
+  int off;
+  int array_size;
+  mc_nbt_t* chunks;
+  mc_nbt_t* chunk;
+  mc_nbt_t* blocks;
+  mc_nbt_t* block_lights;
+  mc_nbt_t* sky_lights;
+  mc_nbt_t* block_datas;
+  mc_chunk_t* mchunk;
+  mc_block_t* block;
+
+  chunks = NBT_GET(level, "Sections", kNBTList);
+  if (chunks == NULL)
     return -1;
   for (i = 0; i < chunks->value.values.len; i++) {
     chunk = chunks->value.values.list[i];
@@ -179,21 +205,17 @@ int mc_anvil__parse_column(mc_nbt_t* nbt, mc_column_t* col) {
     array_size = ARRAY_SIZE(mchunk->blocks) *
                  ARRAY_SIZE(mchunk->blocks[0]) *
                  ARRAY_SIZE(mchunk->blocks[0][0]);
-    blocks = NBT_GET(chunk, "Blocks");
-    block_lights = NBT_GET(chunk, "BlockLight");
-    sky_lights = NBT_GET(chunk, "SkyLight");
-    /* TODO(indutny): read Data too */
+    blocks = NBT_GET(chunk, "Blocks", kNBTByteArray);
+    block_lights = NBT_GET(chunk, "BlockLight", kNBTByteArray);
+    sky_lights = NBT_GET(chunk, "SkyLight", kNBTByteArray);
+    block_datas = NBT_GET(chunk, "Data", kNBTByteArray);
 
     if (blocks == NULL || block_lights == NULL || sky_lights == NULL)
       goto read_chunks_failed;
-    if (blocks->type != kNBTByteArray ||
-        block_lights->type != kNBTByteArray ||
-        sky_lights->type != kNBTByteArray) {
-      goto read_chunks_failed;
-    }
     if (blocks->value.i8_list.len != array_size ||
-        block_lights->value.i8_list.len != array_size / 2 ||
-        sky_lights->value.i8_list.len != array_size / 2) {
+        block_lights->value.i8_list.len != (array_size / 2) ||
+        sky_lights->value.i8_list.len != (array_size / 2) ||
+        block_datas->value.i8_list.len != (array_size / 2)) {
       goto read_chunks_failed;
     }
 
@@ -204,24 +226,23 @@ int mc_anvil__parse_column(mc_nbt_t* nbt, mc_column_t* col) {
                 z * ARRAY_SIZE(mchunk->blocks) +
                 y * ARRAY_SIZE(mchunk->blocks) * ARRAY_SIZE(mchunk->blocks[0]);
 
-          mchunk->blocks[x][y][z].id =
-              (mc_block_id_t) blocks->value.i8_list.list[off];
+          block = &mchunk->blocks[x][y][z];
+          block->id = (mc_block_id_t) blocks->value.i8_list.list[off];
           if (off % 2 == 0) {
-            mchunk->blocks[x][y][z].light =
+            block->light =
                 (uint8_t) block_lights->value.i8_list.list[off >> 1] >> 4;
-            mchunk->blocks[x][y][z].skylight =
+            block->skylight =
                 (uint8_t) sky_lights->value.i8_list.list[off >> 1] >> 4;
           } else {
-            mchunk->blocks[x][y][z].light =
+            block->light =
                 (uint8_t) block_lights->value.i8_list.list[off >> 1] & 0xf;
-            mchunk->blocks[x][y][z].skylight =
+            block->skylight =
                 (uint8_t) sky_lights->value.i8_list.list[off >> 1] & 0xf;
           }
         }
       }
     }
   }
-
 
   return 0;
 

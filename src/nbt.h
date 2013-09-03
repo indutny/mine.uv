@@ -101,7 +101,10 @@ void mc_nbt_postparse(mc_nbt_parser_t* parser);
 int mc_nbt_encode(mc_nbt_t* val, mc_nbt_comp_t comp, unsigned char** out);
 
 /* Utils API */
-mc_nbt_t* mc_nbt_get(mc_nbt_t* val, const char* prop, int len);
+mc_nbt_t* mc_nbt_get(mc_nbt_t* val,
+                     const char* prop,
+                     int len,
+                     mc_nbt_type_t type);
 int mc_nbt_read(mc_nbt_t* val,
                 const char* prop,
                 int len,
