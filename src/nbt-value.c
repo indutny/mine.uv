@@ -80,9 +80,10 @@ mc_nbt_t* mc_nbt_create_str(const char* name,
                             int value_len) {
   mc_nbt_t* res;
 
-  res = mc_nbt__create(name, name_len, kNBTString, value_len - 1);
+  res = mc_nbt__create(name, name_len, kNBTString, value_len);
   if (res != NULL) {
     res->value.str.len = value_len;
+    res->value.str.value = (char*) (&res->value.str.value + 1);
     memcpy(res->value.str.value, value, value_len);
   }
   return res;
@@ -92,9 +93,11 @@ mc_nbt_t* mc_nbt_create_str(const char* name,
 mc_nbt_t* mc_nbt_create_i8l(const char* name, int name_len, int len) {
   mc_nbt_t* res;
 
-  res = mc_nbt__create(name, name_len, kNBTByteArray, len - 1);
-  if (res != NULL)
+  res = mc_nbt__create(name, name_len, kNBTByteArray, len);
+  if (res != NULL) {
+    res->value.i8_list.list = (int8_t*) (&res->value.i8_list.list + 1);
     res->value.i8_list.len = len;
+  }
 
   return res;
 }
@@ -103,9 +106,11 @@ mc_nbt_t* mc_nbt_create_i8l(const char* name, int name_len, int len) {
 mc_nbt_t* mc_nbt_create_i32l(const char* name, int name_len, int len) {
   mc_nbt_t* res;
 
-  res = mc_nbt__create(name, name_len, kNBTIntArray, 4 * (len - 1));
-  if (res != NULL)
+  res = mc_nbt__create(name, name_len, kNBTIntArray, 4 * len);
+  if (res != NULL) {
+    res->value.i32_list.list = (int32_t*) (&res->value.i32_list.list + 1);
     res->value.i32_list.len = len;
+  }
 
   return res;
 }

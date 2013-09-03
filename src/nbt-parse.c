@@ -6,64 +6,82 @@
 #include "nbt.h"
 #include "nbt-private.h"
 
-struct mc_nbt__parser_s {
-  unsigned char* data;
-  int len;
-  int depth;
-  int name_len;
-};
-
-static const int kMaxDepth = 1024;
-static const int kCompoundCapacity = 4;
-
-typedef struct mc_nbt__parser_s mc_nbt__parser_t;
-
 static int mc_nbt__decompress(const unsigned char* data,
                               int len,
                               mc_nbt_comp_t comp,
                               unsigned char** out);
-static mc_nbt_t* mc_nbt__parse(mc_nbt__parser_t* parser);
+static mc_nbt_t* mc_nbt__parse(mc_nbt_parser_t* parser);
 static mc_nbt_t* mc_nbt__parse_payload(mc_nbt__tag_t tag,
-                                       mc_nbt__parser_t* parser);
+                                       mc_nbt_parser_t* parser);
 static mc_nbt_t* mc_nbt__alloc(mc_nbt__tag_t tag,
-                               mc_nbt__parser_t* parser,
+                               mc_nbt_parser_t* parser,
                                int additional_payload);
 static mc_nbt_t* mc_nbt__parse_primitive(mc_nbt__tag_t tag,
-                                         mc_nbt__parser_t* parser);
+                                         mc_nbt_parser_t* parser);
 static mc_nbt_t* mc_nbt__parse_array(mc_nbt__tag_t tag,
-                                     mc_nbt__parser_t* parser);
+                                     mc_nbt_parser_t* parser);
 static mc_nbt_t* mc_nbt__parse_high_order(mc_nbt__tag_t tag,
-                                          mc_nbt__parser_t* parser);
+                                          mc_nbt_parser_t* parser);
 
 /* Used as tag end value */
 static mc_nbt_t mc_nbt__end;
+static const int kMaxDepth = 1024;
+static const int kCompoundCapacity = 4;
 
 
 mc_nbt_t* mc_nbt_parse(const unsigned char* data,
                        int len,
                        mc_nbt_comp_t comp) {
   mc_nbt_t* res;
-  mc_nbt__parser_t parser;
-  unsigned char* uncompressed;
+  mc_nbt_parser_t parser;
 
+  res = mc_nbt_preparse(&parser, data, len, comp, kIndependentLifetime);
+  if (res == NULL)
+    return NULL;
+
+  mc_nbt_postparse(&parser);
+  return res;
+}
+
+
+mc_nbt_t* mc_nbt_preparse(mc_nbt_parser_t* parser,
+                          const unsigned char* data,
+                          int len,
+                          mc_nbt_comp_t comp,
+                          mc_nbt_lifetime_t lifetime) {
+  unsigned char* uncompressed;
+  mc_nbt_t* res;
+
+  parser->lifetime = lifetime;
   if (comp == kNBTUncompressed) {
-    parser.len = len;
-    parser.data = (unsigned char*) data;
+    parser->len = len;
+    parser->data = (unsigned char*) data;
+    parser->uncompressed = NULL;
   } else {
-    parser.len = mc_nbt__decompress(data, len, comp, &uncompressed);
-    parser.data = uncompressed;
-    if (parser.len < 0)
+    parser->len = mc_nbt__decompress(data, len, comp, &uncompressed);
+    parser->data = uncompressed;
+    if (parser->len < 0)
       return NULL;
+    parser->uncompressed = parser->data;
   }
 
-  parser.depth = 0;
-  res = mc_nbt__parse(&parser);
+  parser->name_len = 0;
+  parser->depth = 0;
 
-  /* De-allocate uncompressed data */
-  if (comp != kNBTUncompressed)
-    free(uncompressed);
+  res = mc_nbt__parse(parser);
+  if (res == NULL) {
+    free(parser->uncompressed);
+    parser->uncompressed = NULL;
+  }
 
   return res;
+}
+
+
+void mc_nbt_postparse(mc_nbt_parser_t* parser) {
+  /* De-allocate uncompressed data */
+  if (parser->uncompressed != NULL)
+    free(parser->uncompressed);
 }
 
 
@@ -75,7 +93,7 @@ int mc_nbt__decompress(const unsigned char* data,
 }
 
 
-mc_nbt_t* mc_nbt__parse(mc_nbt__parser_t* parser) {
+mc_nbt_t* mc_nbt__parse(mc_nbt_parser_t* parser) {
   mc_nbt__tag_t tag;
   mc_nbt_t* res;
   const char* name;
@@ -116,14 +134,17 @@ mc_nbt_t* mc_nbt__parse(mc_nbt__parser_t* parser) {
 
   if (res != NULL) {
     assert(res->name.len == name_len);
-    memcpy((char*) res->name.value, name, res->name.len);
+    if (parser->lifetime == kSameLifetime)
+      res->name.value = name;
+    else
+      memcpy((char*) res->name.value, name, res->name.len);
   }
 
   return res;
 }
 
 
-mc_nbt_t* mc_nbt__parse_payload(mc_nbt__tag_t tag, mc_nbt__parser_t* parser) {
+mc_nbt_t* mc_nbt__parse_payload(mc_nbt__tag_t tag, mc_nbt_parser_t* parser) {
   switch (tag) {
     case kNBTTagByte:
     case kNBTTagShort:
@@ -146,11 +167,13 @@ mc_nbt_t* mc_nbt__parse_payload(mc_nbt__tag_t tag, mc_nbt__parser_t* parser) {
 
 
 mc_nbt_t* mc_nbt__alloc(mc_nbt__tag_t tag,
-                        mc_nbt__parser_t* parser,
+                        mc_nbt_parser_t* parser,
                         int additional_payload) {
   mc_nbt_t* res;
 
-  res = malloc(sizeof(*res) + additional_payload + parser->name_len);
+  res = malloc(sizeof(*res) +
+               additional_payload +
+               (parser->lifetime == kSameLifetime ? 0 : parser->name_len));
   if (res == NULL)
     return NULL;
   switch (tag) {
@@ -169,7 +192,7 @@ mc_nbt_t* mc_nbt__alloc(mc_nbt__tag_t tag,
       /* Unexpected */
       abort();
   }
-  if (parser->name_len != 0)
+  if (parser->name_len != 0 && parser->lifetime == kIndependentLifetime)
     res->name.value = (char*) res + sizeof(*res) + additional_payload;
   else
     res->name.value = NULL;
@@ -180,7 +203,7 @@ mc_nbt_t* mc_nbt__alloc(mc_nbt__tag_t tag,
 }
 
 
-mc_nbt_t* mc_nbt__parse_primitive(mc_nbt__tag_t tag, mc_nbt__parser_t* parser) {
+mc_nbt_t* mc_nbt__parse_primitive(mc_nbt__tag_t tag, mc_nbt_parser_t* parser) {
   mc_nbt_t* res;
 
   res = mc_nbt__alloc(tag, parser, 0);
@@ -242,13 +265,14 @@ fatal:
 }
 
 
-mc_nbt_t* mc_nbt__parse_array(mc_nbt__tag_t tag, mc_nbt__parser_t* parser) {
+mc_nbt_t* mc_nbt__parse_array(mc_nbt__tag_t tag, mc_nbt_parser_t* parser) {
   mc_nbt_t* res;
   int32_t i;
   int additional_len;
   int32_t len;
 
   /* Read header */
+  additional_len = 0;
   switch (tag) {
     case kNBTTagByteArray:
       if (parser->len < 4)
@@ -260,7 +284,8 @@ mc_nbt_t* mc_nbt__parse_array(mc_nbt__tag_t tag, mc_nbt__parser_t* parser) {
       if (parser->len < len)
         return NULL;
 
-      additional_len = len - 1;
+      if (parser->lifetime == kIndependentLifetime)
+        additional_len = len;
       break;
     case kNBTTagString:
       if (parser->len < 2)
@@ -272,7 +297,8 @@ mc_nbt_t* mc_nbt__parse_array(mc_nbt__tag_t tag, mc_nbt__parser_t* parser) {
       if (parser->len < len)
         return NULL;
 
-      additional_len = len - 1;
+      if (parser->lifetime == kIndependentLifetime)
+        additional_len = len;
       break;
     case kNBTTagIntArray:
       if (parser->len < 4)
@@ -284,13 +310,18 @@ mc_nbt_t* mc_nbt__parse_array(mc_nbt__tag_t tag, mc_nbt__parser_t* parser) {
       if (parser->len < len * 4)
         return NULL;
 
-      additional_len = (len - 1) * 4;
+      if (parser->lifetime == kIndependentLifetime ||
+          parser->uncompressed == NULL) {
+        additional_len = len * 4;
+      }
       break;
     default:
       return NULL;
   }
 
-  res = mc_nbt__alloc(tag, parser, additional_len);
+  res = mc_nbt__alloc(tag,
+                      parser,
+                      additional_len);
   if (res == NULL)
     return NULL;
 
@@ -304,7 +335,12 @@ mc_nbt_t* mc_nbt__parse_array(mc_nbt__tag_t tag, mc_nbt__parser_t* parser) {
   switch (tag) {
     case kNBTTagByteArray:
     case kNBTTagString:
-      memcpy(res->value.str.value, parser->data, len);
+      if (parser->lifetime == kSameLifetime) {
+        res->value.str.value = (char*) parser->data;
+      } else {
+        res->value.str.value = (char*) (&res->value.str.value + 1);
+        memcpy(res->value.str.value, parser->data, len);
+      }
       parser->data += len;
       parser->len -= len;
       break;
@@ -312,10 +348,20 @@ mc_nbt_t* mc_nbt__parse_array(mc_nbt__tag_t tag, mc_nbt__parser_t* parser) {
       if (parser->len < 4)
         goto fatal;
 
-      for (i = 0; i < len; i++) {
-        res->value.i32_list.list[i] = ntohl(*(uint32_t*) parser->data);
-        parser->data += 4;
-        parser->len -= 4;
+      /* Perform byte rotation in-place if possible */
+      if (additional_len == 0) {
+        res->value.i32_list.list = (int32_t*) parser->data;
+        for (i = 0; i < len; i++)
+          res->value.i32_list.list[i] = ntohl(res->value.i32_list.list[i]);
+        parser->data += 4 * len;
+        parser->len -= 4 * len;
+      } else {
+        res->value.i32_list.list = (int32_t*) (&res->value.i32_list.list + 1);
+        for (i = 0; i < len; i++) {
+          res->value.i32_list.list[i] = ntohl(*(uint32_t*) parser->data);
+          parser->data += 4;
+          parser->len -= 4;
+        }
       }
       break;
     default:
@@ -331,7 +377,7 @@ fatal:
 
 
 mc_nbt_t* mc_nbt__parse_high_order(mc_nbt__tag_t tag,
-                                   mc_nbt__parser_t* parser) {
+                                   mc_nbt_parser_t* parser) {
   mc_nbt_t* res;
   mc_nbt_t* tmp;
   mc_nbt_t* child;
@@ -371,7 +417,9 @@ mc_nbt_t* mc_nbt__parse_high_order(mc_nbt__tag_t tag,
 
     /* Allocate compound with initial capacity */
     len = kCompoundCapacity;
-    res = mc_nbt__alloc(tag, parser, len * sizeof(*res->value.values.list));
+    res = mc_nbt__alloc(tag,
+                        parser,
+                        (len -1) * sizeof(*res->value.values.list));
     if (res == NULL)
       return res;
 
@@ -381,7 +429,9 @@ mc_nbt_t* mc_nbt__parse_high_order(mc_nbt__tag_t tag,
       if (i == len) {
         parser->name_len = name_len;
         len += kCompoundCapacity;
-        tmp = mc_nbt__alloc(tag, parser, len * sizeof(*res->value.values.list));
+        tmp = mc_nbt__alloc(tag,
+                            parser,
+                            (len - 1) * sizeof(*res->value.values.list));
         if (tmp == NULL)
           goto fatal;
 
@@ -389,8 +439,8 @@ mc_nbt_t* mc_nbt__parse_high_order(mc_nbt__tag_t tag,
         name = tmp->name.value;
         memcpy(tmp,
                res,
-               sizeof(*res) +
-                  (len - kCompoundCapacity) * sizeof(*res->value.values.list));
+               sizeof(*res) + (len - kCompoundCapacity - 1) *
+                              sizeof(*res->value.values.list));
         tmp->name.value = name;
         free(res);
         res = tmp;

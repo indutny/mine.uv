@@ -4,13 +4,31 @@
 #include <stdint.h>  /* uint8_t, and friends */
 
 typedef struct mc_nbt_s mc_nbt_t;
+typedef struct mc_nbt_parser_s mc_nbt_parser_t;
 typedef enum mc_nbt_type_e mc_nbt_type_t;
 typedef enum mc_nbt_comp_e mc_nbt_comp_t;
+typedef enum mc_nbt_lifetime_e mc_nbt_lifetime_t;
 
 enum mc_nbt_comp_e {
   kNBTUncompressed,
   kNBTDeflate,
   kNBTGZip
+};
+
+enum mc_nbt_lifetime_e {
+  kSameLifetime,
+  kIndependentLifetime
+};
+
+struct mc_nbt_parser_s {
+  unsigned char* data;
+  int len;
+  int depth;
+  int name_len;
+
+  /* NBT tree has the same lifetime as input data */
+  mc_nbt_lifetime_t lifetime;
+  unsigned char* uncompressed;
 };
 
 enum mc_nbt_type_e {
@@ -51,15 +69,15 @@ struct mc_nbt_s {
      */
     struct {
       int32_t len;
-      int8_t list[1];
+      int8_t* list;
     } i8_list;
     struct {
       int32_t len;
-      int32_t list[1];
+      int32_t* list;
     } i32_list;
     struct {
       int32_t len;
-      char value[1];
+      char* value;
     } str;
     struct {
       int32_t len;
@@ -72,6 +90,12 @@ struct mc_nbt_s {
 mc_nbt_t* mc_nbt_parse(const unsigned char* data,
                              int len,
                              mc_nbt_comp_t comp);
+mc_nbt_t* mc_nbt_preparse(mc_nbt_parser_t* parser,
+                          const unsigned char* data,
+                          int len,
+                          mc_nbt_comp_t comp,
+                          mc_nbt_lifetime_t lifetime);
+void mc_nbt_postparse(mc_nbt_parser_t* parser);
 
 /* Encoder API */
 int mc_nbt_encode(mc_nbt_t* val, mc_nbt_comp_t comp, unsigned char** out);

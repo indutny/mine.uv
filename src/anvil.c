@@ -25,6 +25,7 @@ static const int kSectorSize = 4096;
 
 int mc_anvil_parse(const unsigned char* data, int len, mc_region_t** out) {
   int r;
+  mc_nbt_parser_t nbt_parser;
   mc_region_t* res;
   mc_column_t* col;
   mc_nbt_t* nbt;
@@ -74,9 +75,11 @@ int mc_anvil_parse(const unsigned char* data, int len, mc_region_t** out) {
       if (body_len + offset + 4 > len)
         goto fatal;
 
-      nbt = mc_nbt_parse(data + offset + 5,
-                         body_len - 1,
-                         comp == 1 ? kNBTGZip : kNBTDeflate);
+      nbt = mc_nbt_preparse(&nbt_parser,
+                            data + offset + 5,
+                            body_len - 1,
+                            comp == 1 ? kNBTGZip : kNBTDeflate,
+                            kSameLifetime);
       if (nbt == NULL)
         goto fatal;
 
@@ -91,6 +94,9 @@ int mc_anvil_parse(const unsigned char* data, int len, mc_region_t** out) {
 
       /* Parse column's NBT */
       r = mc_anvil__parse_column(nbt, col);
+
+      /* Destroy NBT data */
+      mc_nbt_postparse(&nbt_parser);
       mc_nbt_destroy(nbt);
       if (r != 0)
         goto fatal;
@@ -104,6 +110,11 @@ int mc_anvil_parse(const unsigned char* data, int len, mc_region_t** out) {
 fatal:
   mc_region_destroy(res);
 
+  return -1;
+}
+
+
+int mc_anvil_encode(mc_region_t* reg, unsigned char** out) {
   return -1;
 }
 
