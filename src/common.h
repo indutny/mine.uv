@@ -469,6 +469,7 @@ struct mc_column_s {
   int entity_count;
 
   /* TODO(indutny): Store heightmap too */
+  /* TODO(indutny): Store tile entities too */
 };
 
 struct mc_region_s {
