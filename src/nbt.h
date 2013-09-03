@@ -110,6 +110,7 @@ int mc_nbt_read(mc_nbt_t* val,
                 int len,
                 mc_nbt_type_t type,
                 void* to);
+mc_nbt_t* mc_nbt_clone(const mc_nbt_t* val);
 
 /* Value API */
 mc_nbt_t* mc_nbt_create_i8(const char* name, int name_len, int8_t val);

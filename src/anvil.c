@@ -294,6 +294,10 @@ mc_entity_t* mc_anvil__parse_entities(mc_nbt_t* level, int* count) {
   return res;
 
 read_entities_failed:
+  while (--i >= 0) {
+    mc_nbt_destroy(res[i].nbt);
+    res[i].nbt = NULL;
+  }
   free(res);
 
 get_entities_failed:
@@ -346,6 +350,10 @@ int mc_anvil__parse_entity(mc_nbt_t* nbt, mc_entity_t* entity) {
   }
   entity->yaw = list->value.values.list[0]->value.f32;
   entity->pitch = list->value.values.list[1]->value.f32;
+
+  entity->nbt = mc_nbt_clone(nbt);
+  if (entity->nbt == NULL)
+    return -1;
 
   return 0;
 }

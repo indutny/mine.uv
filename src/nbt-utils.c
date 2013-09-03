@@ -75,3 +75,61 @@ int mc_nbt_read(mc_nbt_t* val,
 
   return 0;
 }
+
+
+mc_nbt_t* mc_nbt_clone(const mc_nbt_t* val) {
+  int i;
+  int additional_size;
+  mc_nbt_t* res;
+
+  switch (val->type) {
+    case kNBTByteArray:
+    case kNBTString:
+      additional_size = val->value.i8l.len;
+      break;
+    case kNBTIntArray:
+      additional_size = val->value.i32l.len * 4;
+      break;
+    case kNBTList:
+    case kNBTCompound:
+      additional_size = val->value.values.len *
+                        sizeof(*val->value.values.list);
+      break;
+    default:
+      additional_size = 0;
+      break;
+  }
+
+  res = malloc(sizeof(*res) + additional_size + val->name.len);
+  if (res == NULL)
+    return NULL;
+
+  switch (val->type) {
+    case kNBTList:
+    case kNBTCompound:
+      /* Clone children */
+      for (i = 0; i < val->value.values.len; i++) {
+        res->value.values.list[i] = mc_nbt_clone(val->value.values.list[i]);
+        if (res->value.values.list[i] == NULL)
+          goto high_level_failed;
+      }
+      break;
+    default:
+      /* Copy all primitive data */
+      memcpy(res, val, sizeof(*res) + additional_size);
+      break;
+  }
+
+  /* Copy name */
+  res->name.value = (char*) res + additional_size;
+  res->name.len = val->name.len;
+  memcpy((char*) res->name.value, val->name.value, val->name.len);
+
+  return res;
+
+high_level_failed:
+  while (--i >= 0)
+    mc_nbt_destroy(res->value.values.list[i]);
+  free(res);
+  return NULL;
+}

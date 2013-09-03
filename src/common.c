@@ -9,6 +9,7 @@
 
 #include "common.h"
 #include "common-private.h"  /* ARRAY_SIZE */
+#include "nbt.h"  /* mc_nbt_destroy */
 
 static const char kBackupSuffix[] = ".backup";
 static const char kTmpSuffix[] = ".tmp";
@@ -18,6 +19,7 @@ void mc_region_destroy(mc_region_t* region) {
   unsigned int x;
   unsigned int y;
   unsigned int z;
+  int i;
   mc_column_t* col;
 
   for (x = 0; x < ARRAY_SIZE(region->column); x++) {
@@ -31,6 +33,10 @@ void mc_region_destroy(mc_region_t* region) {
       }
 
       /* Free entities */
+      for (i = 0; i < col->entity_count; i++) {
+        mc_nbt_destroy(col->entities[i].nbt);
+        col->entities[i].nbt = NULL;
+      }
       free(col->entities);
       col->entities = NULL;
       col->entity_count = 0;

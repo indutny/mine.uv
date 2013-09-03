@@ -3,6 +3,9 @@
 
 #include <stdint.h>  /* uint8_t */
 
+/* Forward-declarations */
+struct mc_nbt_s;
+
 #define MC_ENTITY_LIST(ENTITY_DECL) \
     ENTITY_DECL(DroppedItem, 0x1, "Item") \
     ENTITY_DECL(ExperienceOrb, 0x2, "XPOrb") \
@@ -446,6 +449,8 @@ struct mc_entity_s {
   double pos_z;
   float yaw;
   float pitch;
+
+  struct mc_nbt_s* nbt;
 };
 
 struct mc_chunk_s {
