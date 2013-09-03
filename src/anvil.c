@@ -13,6 +13,7 @@ static int mc_anvil__parse_chunks(mc_nbt_t* level, mc_column_t* col);
 static mc_entity_t* mc_anvil__parse_entities(mc_nbt_t* level, int* count);
 static int mc_anvil__parse_entity(mc_nbt_t* nbt, mc_entity_t* entity);
 static int mc_anvil__parse_tile_entities(mc_nbt_t* nbt, mc_column_t* col);
+static int mc_anvil__parse_height_map(mc_nbt_t* nbt, mc_column_t* col);
 
 static const int kHeaderSize = 1024;  /* 32 * 32 */
 static const int kSectorSize = 4096;
@@ -153,6 +154,11 @@ int mc_anvil__parse_column(mc_nbt_t* nbt, mc_column_t* col) {
 
   /* Parse tile entities */
   r = mc_anvil__parse_tile_entities(level, col);
+  if (r != 0)
+    return -1;
+
+  /* Parse height map */
+  r = mc_anvil__parse_height_map(level, col);
   if (r != 0)
     return -1;
 
@@ -409,6 +415,28 @@ int mc_anvil__parse_tile_entities(mc_nbt_t* nbt, mc_column_t* col) {
       return -1;
     chunk->blocks[x][z][chunk_y_off].tile_data = tile;
   }
+
+  return 0;
+}
+
+
+int mc_anvil__parse_height_map(mc_nbt_t* nbt, mc_column_t* col) {
+  mc_nbt_t* map;
+  int x;
+  int z;
+  int max_x;
+  int max_z;
+
+  max_x = ARRAY_SIZE(col->height_map);
+  max_z = ARRAY_SIZE(col->height_map[0]);
+
+  map = NBT_GET(nbt, "HeightMap", kNBTIntArray);
+  if (map == NULL || map->value.i32l.len != max_x * max_z)
+    return -1;
+
+  for (x = 0; x < max_x; x++)
+    for (z = 0; z < max_z; z++)
+      col->height_map[x][z] = map->value.i32l.list[x + z * max_x];
 
   return 0;
 }

@@ -468,8 +468,7 @@ struct mc_column_s {
   mc_chunk_t* chunks[16];
   mc_entity_t* entities;
   int entity_count;
-
-  /* TODO(indutny): Store heightmap too */
+  int32_t height_map[16][16];
 };
 
 struct mc_region_s {
