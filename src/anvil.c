@@ -177,6 +177,9 @@ int mc_anvil__parse_chunks(mc_nbt_t* level, mc_column_t* col) {
   unsigned z;
   int off;
   int array_size;
+  uint8_t block_light;
+  uint8_t sky_light;
+  uint8_t block_data;
   mc_nbt_t* chunks;
   mc_nbt_t* chunk;
   mc_nbt_t* blocks;
@@ -228,16 +231,18 @@ int mc_anvil__parse_chunks(mc_nbt_t* level, mc_column_t* col) {
 
           block = &mchunk->blocks[x][y][z];
           block->id = (mc_block_id_t) blocks->value.i8l.list[off];
+
+          block_light = (uint8_t) block_lights->value.i8l.list[off >> 1];
+          sky_light = (uint8_t) block_lights->value.i8l.list[off >> 1];
+          block_data = (uint8_t) block_datas->value.i8l.list[off >> 1];
           if (off % 2 == 0) {
-            block->light =
-                (uint8_t) block_lights->value.i8l.list[off >> 1] >> 4;
-            block->skylight =
-                (uint8_t) sky_lights->value.i8l.list[off >> 1] >> 4;
+            block->light = block_light >> 4;
+            block->skylight = sky_light >> 4;
+            block->metadata = block_data >> 4;
           } else {
-            block->light =
-                (uint8_t) block_lights->value.i8l.list[off >> 1] & 0xf;
-            block->skylight =
-                (uint8_t) sky_lights->value.i8l.list[off >> 1] & 0xf;
+            block->light = block_light & 0xf;
+            block->skylight = sky_light & 0xf;
+            block->metadata = block_data & 0xf;
           }
         }
       }
