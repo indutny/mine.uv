@@ -354,14 +354,14 @@ struct mc_slot_s {
 };
 
 struct mc_block_s {
-  mc_block_id_t block_id;
-  uint8_t block_metadata;
-  uint8_t block_light;
-  uint8_t block_skylight;
+  mc_block_id_t id;
+  uint8_t metadata;
+  uint8_t light;
+  uint8_t skylight;
 };
 
 struct mc_chunk_s {
-  mc_block_t block[16][16][16];
+  mc_block_t blocks[16][16][16];
 };
 
 struct mc_column_s {

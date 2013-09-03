@@ -77,7 +77,12 @@ mc_nbt_t* mc_nbt_parse(const unsigned char* data,
 int mc_nbt_encode(mc_nbt_t* val, mc_nbt_comp_t comp, unsigned char** out);
 
 /* Utils API */
-mc_nbt_t** mc_nbt_get(mc_nbt_t* val, const char* prop, int len);
+mc_nbt_t* mc_nbt_get(mc_nbt_t* val, const char* prop, int len);
+int mc_nbt_read(mc_nbt_t* val,
+                const char* prop,
+                int len,
+                mc_nbt_type_t type,
+                void* to);
 
 /* Value API */
 mc_nbt_t* mc_nbt_create_i8(const char* name, int name_len, int8_t val);

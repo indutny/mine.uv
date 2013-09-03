@@ -4,7 +4,7 @@
 #include "nbt-private.h"
 #include "zlib.h"
 
-static const int kZlibIncrement = 16384;
+static const int kZlibIncrement = 64 * 1024;
 
 
 int mc_nbt__zlib(const unsigned char* data,
@@ -35,7 +35,7 @@ int mc_nbt__zlib(const unsigned char* data,
   stream.avail_in = len;
 
   /* NBT should be really good at compressing */
-  out_len = decompress ? 3 * len : len;
+  out_len = kZlibIncrement;
   *out = malloc(out_len);
   if (*out == NULL)
     goto fatal;
@@ -54,6 +54,9 @@ int mc_nbt__zlib(const unsigned char* data,
 
     if (r != Z_OK)
       goto fatal;
+
+    if (stream.avail_out != 0)
+      continue;
 
     /* Buffer too small... */
     tmp = malloc(out_len + kZlibIncrement);
