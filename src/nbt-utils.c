@@ -92,7 +92,7 @@ mc_nbt_t* mc_nbt_clone(const mc_nbt_t* val) {
       break;
     case kNBTList:
     case kNBTCompound:
-      additional_size = val->value.values.len *
+      additional_size = (val->value.values.len - 1) *
                         sizeof(*val->value.values.list);
       break;
     default:
@@ -113,6 +113,8 @@ mc_nbt_t* mc_nbt_clone(const mc_nbt_t* val) {
         if (res->value.values.list[i] == NULL)
           goto high_level_failed;
       }
+      res->type = val->type;
+      res->value.values.len = val->value.values.len;
       break;
     default:
       /* Copy all primitive data */
@@ -121,7 +123,7 @@ mc_nbt_t* mc_nbt_clone(const mc_nbt_t* val) {
   }
 
   /* Copy name */
-  res->name.value = (char*) res + additional_size;
+  res->name.value = (char*) res + sizeof(*res) + additional_size;
   res->name.len = val->name.len;
   memcpy((char*) res->name.value, val->name.value, val->name.len);
 

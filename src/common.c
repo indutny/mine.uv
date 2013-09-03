@@ -11,6 +11,9 @@
 #include "common-private.h"  /* ARRAY_SIZE */
 #include "nbt.h"  /* mc_nbt_destroy */
 
+static void mc_chunk__destroy(mc_chunk_t* block);
+static void mc_block__destroy(mc_block_t* block);
+
 static const char kBackupSuffix[] = ".backup";
 static const char kTmpSuffix[] = ".tmp";
 
@@ -28,7 +31,9 @@ void mc_region_destroy(mc_region_t* region) {
 
       /* Free chunks */
       for (y = 0; y < ARRAY_SIZE(col->chunks); y++) {
-        free(col->chunks[y]);
+        if (col->chunks[y] == NULL)
+          continue;
+        mc_chunk__destroy(col->chunks[y]);
         col->chunks[y] = NULL;
       }
 
@@ -43,6 +48,27 @@ void mc_region_destroy(mc_region_t* region) {
     }
   }
   free(region);
+}
+
+
+void mc_chunk__destroy(mc_chunk_t* chunk) {
+  unsigned int x;
+  unsigned int y;
+  unsigned int z;
+
+  for (x = 0; x < ARRAY_SIZE(chunk->blocks); x++)
+    for (z = 0; z < ARRAY_SIZE(chunk->blocks[x]); z++)
+      for (y = 0; y < ARRAY_SIZE(chunk->blocks[x][z]); y++)
+        mc_block__destroy(&chunk->blocks[x][z][y]);
+  free(chunk);
+}
+
+
+void mc_block__destroy(mc_block_t* block) {
+  if (block->tile_data != NULL) {
+    mc_nbt_destroy(block->tile_data);
+    block->tile_data = NULL;
+  }
 }
 
 

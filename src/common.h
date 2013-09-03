@@ -431,6 +431,7 @@ struct mc_block_s {
   uint8_t metadata;
   uint8_t light;
   uint8_t skylight;
+  struct mc_nbt_s* tile_data;
 };
 
 struct mc_entity_s {
@@ -469,7 +470,6 @@ struct mc_column_s {
   int entity_count;
 
   /* TODO(indutny): Store heightmap too */
-  /* TODO(indutny): Store tile entities too */
 };
 
 struct mc_region_s {

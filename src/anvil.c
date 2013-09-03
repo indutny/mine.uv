@@ -12,6 +12,7 @@ static int mc_anvil__parse_biomes(mc_nbt_t* level, mc_column_t* col);
 static int mc_anvil__parse_chunks(mc_nbt_t* level, mc_column_t* col);
 static mc_entity_t* mc_anvil__parse_entities(mc_nbt_t* level, int* count);
 static int mc_anvil__parse_entity(mc_nbt_t* nbt, mc_entity_t* entity);
+static int mc_anvil__parse_tile_entities(mc_nbt_t* nbt, mc_column_t* col);
 
 static const int kHeaderSize = 1024;  /* 32 * 32 */
 static const int kSectorSize = 4096;
@@ -148,7 +149,12 @@ int mc_anvil__parse_column(mc_nbt_t* nbt, mc_column_t* col) {
   /* Parse entities */
   col->entities = mc_anvil__parse_entities(level, &col->entity_count);
   if (col->entities == NULL)
-    return r;
+    return -1;
+
+  /* Parse tile entities */
+  r = mc_anvil__parse_tile_entities(level, col);
+  if (r != 0)
+    return -1;
 
   return 0;
 }
@@ -250,6 +256,8 @@ int mc_anvil__parse_chunks(mc_nbt_t* level, mc_column_t* col) {
             block->skylight = sky_light & 0xf;
             block->metadata = block_data & 0xf;
           }
+
+          block->tile_data = NULL;
         }
       }
     }
@@ -354,6 +362,53 @@ int mc_anvil__parse_entity(mc_nbt_t* nbt, mc_entity_t* entity) {
   entity->nbt = mc_nbt_clone(nbt);
   if (entity->nbt == NULL)
     return -1;
+
+  return 0;
+}
+
+
+int mc_anvil__parse_tile_entities(mc_nbt_t* nbt, mc_column_t* col) {
+  int i;
+  int32_t x;
+  int32_t y;
+  int32_t z;
+  int y_blocks_in_chunk;
+  int chunk_y;
+  int chunk_y_off;
+  mc_nbt_t* list;
+  mc_nbt_t* tile;
+  mc_chunk_t* chunk;
+
+  list = NBT_GET(nbt, "TileEntities", kNBTList);
+  if (list == NULL || list->value.values.len == 0)
+    return 0;
+
+  if (list->value.values.list[0]->type != kNBTCompound)
+    return -1;
+
+  y_blocks_in_chunk = ARRAY_SIZE(col->chunks[0]->blocks[0][0]);
+  for (i = 0; i < list->value.values.len; i++) {
+    tile = mc_nbt_clone(list->value.values.list[i]);
+    if (tile == NULL)
+      return -1;
+
+    NBT_READ(tile, "x", kNBTInt, &x);
+    NBT_READ(tile, "y", kNBTInt, &y);
+    NBT_READ(tile, "z", kNBTInt, &z);
+
+    chunk_y = y / y_blocks_in_chunk;
+    chunk_y_off = y % y_blocks_in_chunk;
+    if (chunk_y < 0 || chunk_y > (int) ARRAY_SIZE(col->chunks))
+      return -1;
+
+    x = x % ARRAY_SIZE(col->chunks[0]->blocks);
+    z = z % ARRAY_SIZE(col->chunks[0]->blocks[0]);
+
+    chunk = col->chunks[chunk_y];
+    if (chunk == NULL)
+      return -1;
+    chunk->blocks[x][z][chunk_y_off].tile_data = tile;
+  }
 
   return 0;
 }
