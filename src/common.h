@@ -463,6 +463,7 @@ struct mc_column_s {
   int32_t world_x;
   int32_t world_z;
   int64_t last_update;
+  int64_t inhabited_time;
 
   mc_biome_t biomes[16][16];
   mc_chunk_t* chunks[16];

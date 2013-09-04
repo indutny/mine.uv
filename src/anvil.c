@@ -136,6 +136,7 @@ int mc_anvil__parse_column(mc_nbt_t* nbt, mc_column_t* col) {
   NBT_READ(level, "xPos", kNBTInt, &col->world_x);
   NBT_READ(level, "zPos", kNBTInt, &col->world_z);
   NBT_READ(level, "LastUpdate", kNBTLong, &col->last_update);
+  NBT_READ(level, "InhabitedTime", kNBTLong, &col->inhabited_time);
 
   /* Parse biomes */
   r = mc_anvil__parse_biomes(level, col);
