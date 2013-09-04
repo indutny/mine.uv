@@ -198,12 +198,14 @@ int mc_anvil__parse_chunks(mc_nbt_t* level, mc_column_t* col) {
   uint8_t block_light;
   uint8_t sky_light;
   uint8_t block_data;
+  uint16_t block_add;
   mc_nbt_t* chunks;
   mc_nbt_t* chunk;
   mc_nbt_t* blocks;
   mc_nbt_t* block_lights;
   mc_nbt_t* sky_lights;
   mc_nbt_t* block_datas;
+  mc_nbt_t* block_adds;
   mc_chunk_t* mchunk;
   mc_block_t* block;
 
@@ -230,13 +232,15 @@ int mc_anvil__parse_chunks(mc_nbt_t* level, mc_column_t* col) {
     block_lights = NBT_GET(chunk, "BlockLight", kNBTByteArray);
     sky_lights = NBT_GET(chunk, "SkyLight", kNBTByteArray);
     block_datas = NBT_GET(chunk, "Data", kNBTByteArray);
+    block_adds = NBT_GET(chunk, "Add", kNBTByteArray);
 
     if (blocks == NULL || block_lights == NULL || sky_lights == NULL)
       goto read_chunks_failed;
     if (blocks->value.i8l.len != array_size ||
         block_lights->value.i8l.len != (array_size / 2) ||
         sky_lights->value.i8l.len != (array_size / 2) ||
-        block_datas->value.i8l.len != (array_size / 2)) {
+        block_datas->value.i8l.len != (array_size / 2) ||
+        (block_adds != NULL && block_adds->value.i8l.len != (array_size / 2))) {
       goto read_chunks_failed;
     }
 
@@ -248,7 +252,17 @@ int mc_anvil__parse_chunks(mc_nbt_t* level, mc_column_t* col) {
                 y * ARRAY_SIZE(mchunk->blocks) * ARRAY_SIZE(mchunk->blocks[0]);
 
           block = &mchunk->blocks[x][z][y];
-          block->id = (mc_block_id_t) blocks->value.i8l.list[off];
+          if (block_adds == NULL) {
+            block_add = 0;
+          } else {
+            block_add = block_adds->value.i8l.list[off >> 1];
+            if (off % 2 == 0)
+              block_add = block_add >> 4;
+            else
+              block_add = block_add & 0xf;
+          }
+          block_add = block_add << 8;
+          block->id = (mc_block_id_t) (block_add | blocks->value.i8l.list[off]);
 
           block_light = (uint8_t) block_lights->value.i8l.list[off >> 1];
           sky_light = (uint8_t) block_lights->value.i8l.list[off >> 1];
