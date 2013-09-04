@@ -265,7 +265,7 @@ int mc_anvil__parse_chunks(mc_nbt_t* level, mc_column_t* col) {
           block->id = (mc_block_id_t) (block_add | blocks->value.i8l.list[off]);
 
           block_light = (uint8_t) block_lights->value.i8l.list[off >> 1];
-          sky_light = (uint8_t) block_lights->value.i8l.list[off >> 1];
+          sky_light = (uint8_t) sky_lights->value.i8l.list[off >> 1];
           block_data = (uint8_t) block_datas->value.i8l.list[off >> 1];
           if (off % 2 == 0) {
             block->light = block_light >> 4;
