@@ -16,7 +16,9 @@
     ((type*) ((encoder)->data + (encoder)->len))
 
 static int mc_encoder__check_grow(mc_encoder_t* encoder, int size);
+
 static const int kDefaultCapacity = 256;
+static const int kCapacityIncrement = 1024;
 
 
 int mc_encoder_init(mc_encoder_t* encoder, int capacity) {
@@ -138,7 +140,7 @@ int mc_encoder__check_grow(mc_encoder_t* encoder, int size) {
     return 0;
 
   /* Grow */
-  new_capacity = encoder->capacity + size;
+  new_capacity = encoder->capacity + kCapacityIncrement;
   new_data = malloc(new_capacity);
   if (new_data == NULL)
     return -1;
