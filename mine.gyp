@@ -26,6 +26,7 @@
       "src/client-handshake.c",
       "src/client-protocol.c",
       "src/common.c",
+      "src/encoder.c",
       "src/framer.c",
       "src/parser.c",
       "src/server.c",
