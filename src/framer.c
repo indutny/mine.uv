@@ -6,32 +6,11 @@
 #include "uv.h"  /* uv_write */
 #include "common.h"  /* mc_frame_t */
 #include "common-private.h"  /* container_of */
+#include "encoder.h"  /* mc_encoder_t */
 #include "openssl/evp.h"  /* EVP_* */
 
-#define GROW(framer, size) \
-    do { \
-      int r; \
-      r = mc_framer__check_grow((framer), (size)); \
-      if (r != 0) \
-        return r; \
-    } while (0)
-
-#define WRITE(framer, type, v) \
-    do { \
-      int r; \
-      r = mc_framer__write_##type((framer), (v)); \
-      if (r != 0) \
-        return r; \
-    } while (0)
-
-
-#define WRITE_RAW(framer, data, size) \
-    do { \
-      int r; \
-      r = mc_framer__write_raw((framer), (data), (size)); \
-      if (r != 0) \
-        return r; \
-    } while (0)
+#define WRITE(framer, t, v) MC_ENCODER_WRITE(&(framer)->encoder, t, v)
+#define WRITE_RAW(framer, d, l) MC_ENCODER_WRITE_DATA(&(framer)->encoder, d, l)
 
 typedef struct mc_framer__req_s mc_framer__req_t;
 
@@ -45,24 +24,14 @@ struct mc_framer__req_s {
 };
 
 static void mc_framer__after_send(uv_write_t* req, int status);
-static int mc_framer__check_grow(mc_framer_t* framer, int size);
-static int mc_framer__write_u8(mc_framer_t* framer, uint8_t v);
-static int mc_framer__write_u16(mc_framer_t* framer, uint16_t v);
-static int mc_framer__write_u32(mc_framer_t* framer, uint32_t v);
-static int mc_framer__write_string(mc_framer_t* framer, mc_string_t* str);
-static int mc_framer__write_raw(mc_framer_t* framer,
-                                const unsigned char* data,
-                                size_t size);
-
-static const int kFramerInitialLen = 1024;
 
 
 int mc_framer_init(mc_framer_t* framer) {
-  framer->data = malloc(kFramerInitialLen);
-  if (framer->data == NULL)
-    return -1;
-  framer->offset = 0;
-  framer->len = kFramerInitialLen;
+  int r;
+
+  r = mc_encoder_init(&framer->encoder, 0);
+  if (r != 0)
+    return r;
   framer->aes = NULL;
 
   return 0;
@@ -70,10 +39,7 @@ int mc_framer_init(mc_framer_t* framer) {
 
 
 void mc_framer_destroy(mc_framer_t* framer) {
-  free(framer->data);
-  framer->data = NULL;
-  framer->offset = 0;
-  framer->len = 0;
+  mc_encoder_destroy(&framer->encoder);
   framer->aes = NULL;
 }
 
@@ -93,7 +59,7 @@ int mc_framer_send(mc_framer_t* framer,
   char* data;
   int packet_len;
 
-  packet_len = framer->offset;
+  packet_len = mc_encoder_len(&framer->encoder);
 
   /* Account space for possible AES padding */
   if (framer->aes != NULL)
@@ -109,14 +75,14 @@ int mc_framer_send(mc_framer_t* framer,
 
   data = ((char*) req) + sizeof(*req);
   if (framer->aes == NULL) {
-    memcpy(data, framer->data, req->len);
+    memcpy(data, mc_encoder_data(&framer->encoder), req->len);
   } else {
     aes_len = req->len;
     r = EVP_EncryptUpdate(framer->aes,
                           (unsigned char*) data,
                           &aes_len,
-                          framer->data,
-                          framer->offset);
+                          mc_encoder_data(&framer->encoder),
+                          mc_encoder_len(&framer->encoder));
     if (r != 1) {
       free(req);
       return -1;
@@ -128,7 +94,7 @@ int mc_framer_send(mc_framer_t* framer,
   r = uv_write(&req->req, stream, &buf, 1, mc_framer__after_send);
 
   /* Clear state */
-  framer->offset = 0;
+  mc_encoder_reset(&framer->encoder);
 
   return r;
 }
@@ -142,73 +108,6 @@ void mc_framer__after_send(uv_write_t* req, int status) {
     freq->cb(freq->framer, status);
 
   free(freq);
-}
-
-
-int mc_framer__check_grow(mc_framer_t* framer, int size) {
-  if (framer->offset + size <= framer->len)
-    return 0;
-
-  /* Allocation required */
-  framer->len += kFramerInitialLen;
-  framer->data = realloc(framer->data, framer->len);
-  if (framer->data == NULL)
-    return -1;
-
-  return 0;
-}
-
-
-int mc_framer__write_u8(mc_framer_t* framer, uint8_t v) {
-  GROW(framer, sizeof(v));
-
-  framer->data[framer->offset] = v;
-  framer->offset += sizeof(v);
-
-  return 0;
-}
-
-
-int mc_framer__write_u16(mc_framer_t* framer, uint16_t v) {
-  GROW(framer, sizeof(v));
-
-  *(uint16_t*) (framer->data + framer->offset) = htons(v);
-  framer->offset += sizeof(v);
-
-  return 0;
-}
-
-
-int mc_framer__write_u32(mc_framer_t* framer, uint32_t v) {
-  GROW(framer, sizeof(v));
-
-  *(uint32_t*) (framer->data + framer->offset) = htonl(v);
-  framer->offset += sizeof(v);
-
-  return 0;
-}
-
-
-int mc_framer__write_raw(mc_framer_t* framer,
-                         const unsigned char* data,
-                         size_t size) {
-  GROW(framer, size);
-  memcpy(framer->data + framer->offset, data, size);
-  framer->offset += size;
-
-  return 0;
-}
-
-
-int mc_framer__write_string(mc_framer_t* framer, mc_string_t* str) {
-  uint16_t len;
-
-  len = str->len;
-  GROW(framer, sizeof(len) + len * sizeof(*str->data));
-  WRITE(framer, u16, len);
-  WRITE_RAW(framer, (const unsigned char*) str->data, len * sizeof(*str->data));
-
-  return 0;
 }
 
 

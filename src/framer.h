@@ -1,19 +1,18 @@
 #ifndef SRC_FRAMER_H_
 #define SRC_FRAMER_H_
 
-#include "uv.h"  /* uv_stream_t */
-
 #include <stdint.h>  /* uint8_t */
+
+#include "uv.h"  /* uv_stream_t */
 #include "common.h"  /* mc_string_t */
+#include "encoder.h"  /* mc_encoder_t */
 #include "openssl/evp.h"  /* EVP_CIPHER_CTX */
 
 typedef struct mc_framer_s mc_framer_t;
 typedef void (*mc_framer_send_cb_t)(mc_framer_t*, int status);
 
 struct mc_framer_s {
-  unsigned char* data;
-  int offset;
-  int len;
+  mc_encoder_t encoder;
   EVP_CIPHER_CTX* aes;
 };
 
