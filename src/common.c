@@ -8,7 +8,6 @@
 #include <unistd.h>  /* read, write */
 
 #include "common.h"
-#include "common-private.h"  /* ARRAY_SIZE */
 #include "nbt.h"  /* mc_nbt_destroy */
 
 static void mc_chunk__destroy(mc_chunk_t* block);
@@ -19,18 +18,18 @@ static const char kTmpSuffix[] = ".tmp";
 
 
 void mc_region_destroy(mc_region_t* region) {
-  unsigned int x;
-  unsigned int y;
-  unsigned int z;
+  int x;
+  int y;
+  int z;
   int i;
   mc_column_t* col;
 
-  for (x = 0; x < ARRAY_SIZE(region->column); x++) {
-    for (z = 0; z < ARRAY_SIZE(region->column[x]); z++) {
+  for (x = 0; x < kMCColumnMaxX; x++) {
+    for (z = 0; z < kMCColumnMaxZ; z++) {
       col = &region->column[x][z];
 
       /* Free chunks */
-      for (y = 0; y < ARRAY_SIZE(col->chunks); y++) {
+      for (y = 0; y < kMCColumnMaxY; y++) {
         if (col->chunks[y] == NULL)
           continue;
         mc_chunk__destroy(col->chunks[y]);
@@ -52,13 +51,13 @@ void mc_region_destroy(mc_region_t* region) {
 
 
 void mc_chunk__destroy(mc_chunk_t* chunk) {
-  unsigned int x;
-  unsigned int y;
-  unsigned int z;
+  int x;
+  int y;
+  int z;
 
-  for (x = 0; x < ARRAY_SIZE(chunk->blocks); x++)
-    for (z = 0; z < ARRAY_SIZE(chunk->blocks[x]); z++)
-      for (y = 0; y < ARRAY_SIZE(chunk->blocks[x][z]); y++)
+  for (x = 0; x < kMCChunkMaxX; x++)
+    for (z = 0; z < kMCChunkMaxZ; z++)
+      for (y = 0; y < kMCChunkMaxY; y++)
         mc_block__destroy(&chunk->blocks[x][z][y]);
   free(chunk);
 }

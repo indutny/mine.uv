@@ -6,7 +6,6 @@
 #include "anvil.h"
 #include "nbt.h"
 #include "common.h"
-#include "common-private.h"  /* ARRAY_SIZE */
 
 static int mc_anvil__parse_column(mc_nbt_t* nbt, mc_column_t* col);
 static int mc_anvil__parse_biomes(mc_nbt_t* level, mc_column_t* col);
@@ -47,9 +46,6 @@ int mc_anvil_parse(const unsigned char* data, int len, mc_region_t** out) {
   int offset;
   int32_t body_len;
   uint8_t comp;
-  int max_x;
-  int max_y;
-  int max_z;
   int x;
   int z;
 
@@ -62,15 +58,11 @@ int mc_anvil_parse(const unsigned char* data, int len, mc_region_t** out) {
   if (res == NULL)
     return -1;
 
-  max_x = ARRAY_SIZE(res->column);
-  max_z = ARRAY_SIZE(res->column[0]);
-  max_y = ARRAY_SIZE(res->column[0][0].chunks);
-
   /* Read .mca column by column */
-  for (x = 0; x < max_x; x++) {
-    for (z = 0; z < max_z; z++) {
-      offset = (ntohl(*(uint32_t*) (data + 4 * (x + z * max_x))) >> 8) *
-               kSectorSize;
+  for (x = 0; x < kMCColumnMaxX; x++) {
+    for (z = 0; z < kMCColumnMaxZ; z++) {
+      offset = 4 * (x + z * kMCColumnMaxX);
+      offset = (ntohl(*(uint32_t*) (data + offset)) >> 8) * kSectorSize;
 
       /* Not generated yet */
       if (offset == 0)
@@ -164,19 +156,19 @@ int mc_anvil__parse_column(mc_nbt_t* nbt, mc_column_t* col) {
 
 
 int mc_anvil__parse_biomes(mc_nbt_t* level, mc_column_t* col) {
-  unsigned int x;
-  unsigned int z;
+  int x;
+  int z;
   int off;
   int array_size;
   mc_nbt_t* biomes;
 
-  array_size = ARRAY_SIZE(col->biomes) * ARRAY_SIZE(col->biomes[0]);
+  array_size = kMCChunkMaxX * kMCChunkMaxZ;
   biomes = NBT_GET(level, "Biomes", kNBTByteArray);
   if (biomes == NULL || biomes->value.i8l.len != array_size)
     return -1;
-  for (x = 0; x < ARRAY_SIZE(col->biomes); x++) {
-    for (z = 0; z < ARRAY_SIZE(col->biomes[0]); z++) {
-      off = x + z * ARRAY_SIZE(col->biomes);
+  for (x = 0; x < kMCChunkMaxX; x++) {
+    for (z = 0; z < kMCChunkMaxZ; z++) {
+      off = x + z * kMCChunkMaxX;
       col->biomes[x][z] = (mc_biome_t) biomes->value.i8l.list[off];
     }
   }
@@ -187,9 +179,9 @@ int mc_anvil__parse_biomes(mc_nbt_t* level, mc_column_t* col) {
 
 int mc_anvil__parse_chunks(mc_nbt_t* level, mc_column_t* col) {
   int i;
-  unsigned x;
+  int x;
   int8_t y;
-  unsigned z;
+  int z;
   int off;
   int array_size;
   uint8_t block_light;
@@ -213,7 +205,7 @@ int mc_anvil__parse_chunks(mc_nbt_t* level, mc_column_t* col) {
     chunk = chunks->value.values.list[i];
 
     NBT_READ(chunk, "Y", kNBTByte, &y);
-    if (y < 0 || y >= (int8_t) ARRAY_SIZE(col->chunks))
+    if (y < 0 || y >= kMCColumnMaxY)
       goto read_chunks_failed;
 
     mchunk = malloc(sizeof(*mchunk));
@@ -222,9 +214,7 @@ int mc_anvil__parse_chunks(mc_nbt_t* level, mc_column_t* col) {
     col->chunks[y] = mchunk;
 
     /* Read block ids */
-    array_size = ARRAY_SIZE(mchunk->blocks) *
-                 ARRAY_SIZE(mchunk->blocks[0]) *
-                 ARRAY_SIZE(mchunk->blocks[0][0]);
+    array_size = kMCChunkMaxX * kMCChunkMaxZ * kMCChunkMaxY;
     blocks = NBT_GET(chunk, "Blocks", kNBTByteArray);
     block_lights = NBT_GET(chunk, "BlockLight", kNBTByteArray);
     sky_lights = NBT_GET(chunk, "SkyLight", kNBTByteArray);
@@ -241,12 +231,10 @@ int mc_anvil__parse_chunks(mc_nbt_t* level, mc_column_t* col) {
       goto read_chunks_failed;
     }
 
-    for (x = 0; x < ARRAY_SIZE(mchunk->blocks); x++) {
-      for (z = 0; z < ARRAY_SIZE(mchunk->blocks[0]); z++) {
-        for (y = 0; y < (int8_t) ARRAY_SIZE(mchunk->blocks[0][0]); y++) {
-          off = x +
-                z * ARRAY_SIZE(mchunk->blocks) +
-                y * ARRAY_SIZE(mchunk->blocks) * ARRAY_SIZE(mchunk->blocks[0]);
+    for (x = 0; x < kMCChunkMaxX; x++) {
+      for (z = 0; z < kMCChunkMaxZ; z++) {
+        for (y = 0; y < kMCChunkMaxY; y++) {
+          off = x + z * kMCChunkMaxX + y * kMCChunkMaxX * kMCChunkMaxZ;
 
           block = &mchunk->blocks[x][z][y];
           if (block_adds == NULL) {
@@ -284,7 +272,7 @@ int mc_anvil__parse_chunks(mc_nbt_t* level, mc_column_t* col) {
 
 read_chunks_failed:
   /* Deallocate all read chunks */
-  for (i = 0; i < (int) ARRAY_SIZE(col->chunks); i++) {
+  for (i = 0; i < kMCColumnMaxY; i++) {
     free(col->chunks[i]);
     col->chunks[i] = NULL;
   }
@@ -389,7 +377,6 @@ int mc_anvil__parse_tile_entities(mc_nbt_t* nbt, mc_column_t* col) {
   int32_t x;
   int32_t y;
   int32_t z;
-  int y_blocks_in_chunk;
   int chunk_y;
   int chunk_y_off;
   mc_nbt_t* list;
@@ -403,7 +390,6 @@ int mc_anvil__parse_tile_entities(mc_nbt_t* nbt, mc_column_t* col) {
   if (list->value.values.list[0]->type != kNBTCompound)
     return -1;
 
-  y_blocks_in_chunk = ARRAY_SIZE(col->chunks[0]->blocks[0][0]);
   for (i = 0; i < list->value.values.len; i++) {
     tile = mc_nbt_clone(list->value.values.list[i]);
     if (tile == NULL)
@@ -413,13 +399,13 @@ int mc_anvil__parse_tile_entities(mc_nbt_t* nbt, mc_column_t* col) {
     NBT_READ(tile, "y", kNBTInt, &y);
     NBT_READ(tile, "z", kNBTInt, &z);
 
-    chunk_y = y / y_blocks_in_chunk;
-    chunk_y_off = y % y_blocks_in_chunk;
-    if (chunk_y < 0 || chunk_y > (int) ARRAY_SIZE(col->chunks))
+    chunk_y = y / kMCChunkMaxY;
+    chunk_y_off = y % kMCChunkMaxY;
+    if (chunk_y < 0 || chunk_y > kMCColumnMaxY)
       return -1;
 
-    x = x % ARRAY_SIZE(col->chunks[0]->blocks);
-    z = z % ARRAY_SIZE(col->chunks[0]->blocks[0]);
+    x = x % kMCChunkMaxX;
+    z = z % kMCChunkMaxZ;
 
     chunk = col->chunks[chunk_y];
     if (chunk == NULL)
@@ -435,19 +421,14 @@ int mc_anvil__parse_height_map(mc_nbt_t* nbt, mc_column_t* col) {
   mc_nbt_t* map;
   int x;
   int z;
-  int max_x;
-  int max_z;
-
-  max_x = ARRAY_SIZE(col->height_map);
-  max_z = ARRAY_SIZE(col->height_map[0]);
 
   map = NBT_GET(nbt, "HeightMap", kNBTIntArray);
-  if (map == NULL || map->value.i32l.len != max_x * max_z)
+  if (map == NULL || map->value.i32l.len != kMCChunkMaxX * kMCChunkMaxZ)
     return -1;
 
-  for (x = 0; x < max_x; x++)
-    for (z = 0; z < max_z; z++)
-      col->height_map[x][z] = map->value.i32l.list[x + z * max_x];
+  for (x = 0; x < kMCChunkMaxX; x++)
+    for (z = 0; z < kMCChunkMaxZ; z++)
+      col->height_map[x][z] = map->value.i32l.list[x + z * kMCChunkMaxX];
 
   return 0;
 }

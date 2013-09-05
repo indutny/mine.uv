@@ -82,6 +82,20 @@ typedef struct mc_chunk_s mc_chunk_t;
 typedef struct mc_block_s mc_block_t;
 typedef struct mc_entity_s mc_entity_t;
 
+#define MC__COLUMN_MAX_X 32
+#define MC__COLUMN_MAX_Z 32
+#define MC__COLUMN_MAX_Y 16
+#define MC__CHUNK_MAX_X 16
+#define MC__CHUNK_MAX_Z 16
+#define MC__CHUNK_MAX_Y 16
+
+static const int kMCColumnMaxX = MC__COLUMN_MAX_X;
+static const int kMCColumnMaxZ = MC__COLUMN_MAX_Z;
+static const int kMCColumnMaxY = MC__COLUMN_MAX_Y;
+static const int kMCChunkMaxX = MC__CHUNK_MAX_X;
+static const int kMCChunkMaxZ = MC__CHUNK_MAX_Z;
+static const int kMCChunkMaxY = MC__CHUNK_MAX_Y;
+
 enum mc_frame_type_e {
   /* Sent by both */
   kMCKeepAliveType = 0x00,
@@ -455,7 +469,7 @@ struct mc_entity_s {
 };
 
 struct mc_chunk_s {
-  mc_block_t blocks[16][16][16];
+  mc_block_t blocks[MC__CHUNK_MAX_X][MC__CHUNK_MAX_Z][MC__CHUNK_MAX_Y];
 };
 
 struct mc_column_s {
@@ -465,15 +479,15 @@ struct mc_column_s {
   int64_t last_update;
   int64_t inhabited_time;
 
-  mc_biome_t biomes[16][16];
-  mc_chunk_t* chunks[16];
+  mc_biome_t biomes[MC__CHUNK_MAX_X][MC__CHUNK_MAX_Z];
+  int32_t height_map[MC__CHUNK_MAX_X][MC__CHUNK_MAX_Z];
+  mc_chunk_t* chunks[MC__COLUMN_MAX_Y];
   mc_entity_t* entities;
   int entity_count;
-  int32_t height_map[16][16];
 };
 
 struct mc_region_s {
-  mc_column_t column[32][32];
+  mc_column_t column[MC__COLUMN_MAX_X][MC__COLUMN_MAX_Z];
 };
 
 struct mc_frame_s {
@@ -652,5 +666,12 @@ int mc_write_file(const char* path,
                   const unsigned char* out,
                   int len,
                   int update);
+
+#undef MC__COLUMN_MAX_X
+#undef MC__COLUMN_MAX_Z
+#undef MC__COLUMN_MAX_Y
+#undef MC__CHUNK_MAX_X
+#undef MC__CHUNK_MAX_Z
+#undef MC__CHUNK_MAX_Y
 
 #endif  /* SRC_COMMON_H_ */
