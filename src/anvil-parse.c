@@ -3,6 +3,7 @@
 #include <stdlib.h>  /* calloc, free, NULL */
 #include <string.h>  /* memcpy */
 
+#include "anvil.h"
 #include "nbt.h"
 #include "common.h"
 #include "common-private.h"  /* ARRAY_SIZE */
@@ -115,11 +116,6 @@ int mc_anvil_parse(const unsigned char* data, int len, mc_region_t** out) {
 fatal:
   mc_region_destroy(res);
 
-  return -1;
-}
-
-
-int mc_anvil_encode(mc_region_t* reg, unsigned char** out) {
   return -1;
 }
 

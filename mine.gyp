@@ -20,7 +20,8 @@
       "include_dirs": [ "src" ],
     },
     "sources": [
-      "src/anvil.c",
+      "src/anvil-encode.c",
+      "src/anvil-parse.c",
       "src/client.c",
       "src/client-handshake.c",
       "src/client-protocol.c",
