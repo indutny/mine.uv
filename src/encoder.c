@@ -54,6 +54,14 @@ int mc_encoder_len(mc_encoder_t* encoder) {
 }
 
 
+void mc_encoder_replace(mc_encoder_t* encoder, unsigned char* out, int len) {
+  free(encoder->data);
+  encoder->data = out;
+  encoder->len = len;
+  encoder->capacity = len;
+}
+
+
 int mc_encoder_write_u8(mc_encoder_t* encoder, uint8_t value) {
   GROW(encoder, 1);
   *PTR(encoder, uint8_t) = value;
@@ -113,19 +121,15 @@ int mc_encoder_write_string(mc_encoder_t* encoder, mc_string_t* str) {
 
   len = str->len;
   MC_ENCODER_WRITE(encoder, u16, len);
-  MC_ENCODER_WRITE_DATA(encoder,
-                        (const unsigned char*) str->data,
-                        len * sizeof(*str->data));
+  MC_ENCODER_WRITE_DATA(encoder, str->data, len * sizeof(*str->data));
 
   return 0;
 }
 
 
-int mc_encoder_write_data(mc_encoder_t* encoder,
-                          const unsigned char* data,
-                          int len) {
+int mc_encoder_write_data(mc_encoder_t* encoder, const void* data, int len) {
   GROW(encoder, len);
-  memcpy(PTR(encoder, char), data, len);
+  memcpy(PTR(encoder, void), data, len);
   encoder->len += len;
   return 0;
 }
