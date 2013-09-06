@@ -1,7 +1,7 @@
 #include <stdlib.h>  /* malloc, free, NULL */
 #include <string.h>  /* memset */
 
-#include "nbt-private.h"
+#include "format/nbt-private.h"
 #include "zlib.h"
 
 static const int kZlibIncrement = 64 * 1024;

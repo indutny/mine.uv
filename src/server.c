@@ -5,11 +5,11 @@
 
 #include "server.h"
 #include "client.h"
-#include "common-private.h"  /* ARRAY_SIZE */
 #include "openssl/bio.h"  /* BIO, BIO_new, ... */
 #include "openssl/pem.h"  /* PEM_write_bio_RSA_PUBKEY */
 #include "openssl/rand.h"  /* RAND_bytes */
 #include "openssl/rsa.h"  /* RSA_generate_key, RSA_free */
+#include "utils/common-private.h"  /* ARRAY_SIZE */
 #include "uv.h"
 
 static int mc_server__generate_rsa(mc_server_t* server);

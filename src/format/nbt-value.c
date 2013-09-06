@@ -1,8 +1,8 @@
 #include <stdlib.h>  /* malloc, free */
 #include <string.h>  /* memcpy */
 
-#include "nbt.h"
-#include "nbt-private.h"
+#include "format/nbt.h"
+#include "format/nbt-private.h"
 
 static mc_nbt_t* mc_nbt__create(const char* name,
                                 int name_len,

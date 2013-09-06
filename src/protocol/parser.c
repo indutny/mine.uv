@@ -3,7 +3,9 @@
 #include <stdint.h>  /* uint8_t */
 #include <stdlib.h>  /* abort */
 
-#include "parser.h"
+#include "protocol/parser.h"
+#include "utils/common.h"  /* mc_slot_t */
+#include "utils/string.h"  /* mc_string_t */
 
 #define PARSE_READ(p, type, out) \
     do { \

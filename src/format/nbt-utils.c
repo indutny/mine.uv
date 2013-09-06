@@ -1,7 +1,7 @@
 #include <stdlib.h>  /* NULL */
 #include <string.h>  /* strncmp */
 
-#include "nbt.h"
+#include "format/nbt.h"
 
 mc_nbt_t* mc_nbt_get(mc_nbt_t* val,
                      const char* prop,

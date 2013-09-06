@@ -3,8 +3,8 @@
 #include <stdlib.h>  /* NULL, malloc, free */
 #include <string.h>  /* memcpy, memset */
 
-#include "nbt.h"
-#include "nbt-private.h"
+#include "format/nbt.h"
+#include "format/nbt-private.h"
 
 static int mc_nbt__decompress(const unsigned char* data,
                               int len,

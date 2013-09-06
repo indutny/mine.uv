@@ -1,5 +1,5 @@
-#ifndef SRC_NBT_H_
-#define SRC_NBT_H_
+#ifndef SRC_FORMAT_NBT_H_
+#define SRC_FORMAT_NBT_H_
 
 #include <stdint.h>  /* uint8_t, and friends */
 
@@ -130,4 +130,4 @@ mc_nbt_t* mc_nbt_create_compound(const char* name, int name_len, int len);
 
 void mc_nbt_destroy(mc_nbt_t* val);
 
-#endif  /* SRC_NBT_H_ */
+#endif  /* SRC_FORMAT_NBT_H_ */

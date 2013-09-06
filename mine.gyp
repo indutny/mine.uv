@@ -24,8 +24,7 @@
       "src/client.c",
       "src/client-handshake.c",
       "src/client-protocol.c",
-      "src/common.c",
-      "src/encoder.c",
+
       "src/format/anvil-encode.c",
       "src/format/anvil-parse.c",
       "src/format/nbt-common.c",
@@ -33,8 +32,14 @@
       "src/format/nbt-parse.c",
       "src/format/nbt-utils.c",
       "src/format/nbt-value.c",
+
       "src/protocol/framer.c",
       "src/protocol/parser.c",
+
+      "src/utils/encoder.c",
+      "src/utils/common.c",
+      "src/utils/string.c",
+
       "src/server.c",
       "src/session.c",
       "src/world.c",

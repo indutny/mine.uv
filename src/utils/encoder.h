@@ -1,5 +1,5 @@
-#ifndef SRC_ENCODER_H_
-#define SRC_ENCODER_H_
+#ifndef SRC_UTILS_ENCODER_H_
+#define SRC_UTILS_ENCODER_H_
 
 #include "common.h"  /* mc_string_t */
 
@@ -46,4 +46,4 @@ int mc_encoder_write_i64(mc_encoder_t* encoder, int64_t value);
 int mc_encoder_write_string(mc_encoder_t* encoder, mc_string_t* str);
 int mc_encoder_write_data(mc_encoder_t* encoder, const void* data, int len);
 
-#endif  /* SRC_ENCODER_H_ */
+#endif  /* SRC_UTILS_ENCODER_H_ */

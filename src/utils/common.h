@@ -1,7 +1,9 @@
-#ifndef SRC_COMMON_H_
-#define SRC_COMMON_H_
+#ifndef SRC_UTILS_COMMON_H_
+#define SRC_UTILS_COMMON_H_
 
 #include <stdint.h>  /* uint8_t */
+
+#include "utils/string.h"  /* mc_string_t */
 
 /* Forward-declarations */
 struct mc_nbt_s;
@@ -74,7 +76,6 @@ typedef enum mc_biome_e mc_biome_t;
 typedef enum mc_block_id_e mc_block_id_t;
 typedef enum mc_entity_id_e mc_entity_id_t;
 typedef struct mc_frame_s mc_frame_t;
-typedef struct mc_string_s mc_string_t;
 typedef struct mc_slot_s mc_slot_t;
 typedef struct mc_region_s mc_region_t;
 typedef struct mc_column_s mc_column_t;
@@ -425,12 +426,6 @@ enum mc_entity_id_e {
 
 #undef ENTITY_DECL
 
-struct mc_string_s {
-  const uint16_t* data;
-  uint16_t len;
-  int allocated;
-};
-
 struct mc_slot_s {
   uint16_t id;
   uint16_t count;
@@ -644,15 +639,6 @@ struct mc_frame_s {
 mc_region_t* mc_region_new();
 void mc_region_destroy(mc_region_t* region);
 
-/* String utils */
-void mc_string_init(mc_string_t* str);
-void mc_string_destroy(mc_string_t* str);
-
-void mc_string_set(mc_string_t* str, const uint16_t* data, int len);
-int mc_string_copy(mc_string_t* to, mc_string_t* from);
-char* mc_string_to_ascii(mc_string_t* str);
-int mc_string_from_ascii(mc_string_t* to, const char* from);
-
 /* Entity utils */
 mc_entity_id_t mc_entity_str_to_id(const char* val, int len);
 
@@ -674,4 +660,4 @@ int mc_write_file(const char* path,
 #undef MC__CHUNK_MAX_Z
 #undef MC__CHUNK_MAX_Y
 
-#endif  /* SRC_COMMON_H_ */
+#endif  /* SRC_UTILS_COMMON_H_ */

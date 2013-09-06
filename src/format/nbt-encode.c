@@ -2,9 +2,9 @@
 #include <stdlib.h>  /* malloc, free, NULL */
 #include <string.h>  /* memcpy */
 
-#include "encoder.h"
-#include "nbt.h"
-#include "nbt-private.h"
+#include "utils/encoder.h"
+#include "format/nbt.h"
+#include "format/nbt-private.h"
 
 static int mc_nbt__encode(mc_encoder_t* encoder,
                           int with_name,

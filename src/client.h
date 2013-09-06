@@ -4,11 +4,11 @@
 #include <stdint.h>  /* uint8_t, uint16_t */
 
 #include "uv.h"
-#include "common.h"  /* mc_string_t */
 #include "openssl/evp.h"  /* EVP_CIPHER_CTX, EVP_MAX_MD_SIZE */
 #include "protocol/framer.h"  /* mc_farmer_t */
 #include "server.h"  /* mc_server_t */
 #include "session.h"  /* mc_session_verify_t */
+#include "utils/string.h"  /* mc_string_t */
 
 #define MC_MAX_ENC_BUF_SIZE 2048
 #define MC_MAX_CLEAR_BUF_SIZE (MC_MAX_ENC_BUF_SIZE + 512)

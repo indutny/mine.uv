@@ -2,7 +2,7 @@
 #include <stdlib.h>  /* malloc, free, NULL */
 #include <string.h>  /* memcpy */
 
-#include "encoder.h"
+#include "utils/encoder.h"
 
 #define GROW(encoder, size) \
     do { \

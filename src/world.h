@@ -1,7 +1,7 @@
 #ifndef SRC_WORLD_H_
 #define SRC_WORLD_H_
 
-#include "common.h" /* mc_block_id_t, mc_biome_t */
+#include "utils/common.h" /* mc_block_id_t, mc_biome_t */
 
 typedef struct mc_world_s mc_world_t;
 

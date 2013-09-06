@@ -3,10 +3,10 @@
 #include <stdio.h>  /* snprintf */
 #include <string.h>  /* strstr, strlen, memmove */
 
-#include "uv.h"
-#include "common-private.h"  /* container_of */
 #include "session.h"
+#include "uv.h"
 #include "client.h"  /* mc_client_t */
+#include "utils/common-private.h"  /* container_of */
 
 static void mc_session_verify__on_close(uv_handle_t* handle);
 static void mc_session_verify__on_getaddrinfo(uv_getaddrinfo_t* req,

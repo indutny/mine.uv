@@ -1,5 +1,5 @@
-#ifndef SRC_NBT_PRIVATE_H_
-#define SRC_NBT_PRIVATE_H_
+#ifndef SRC_FORMAT_NBT_PRIVATE_H_
+#define SRC_FORMAT_NBT_PRIVATE_H_
 
 #include "nbt.h"  /* mc_nbt_comp_t */
 
@@ -29,4 +29,4 @@ int mc_nbt__zlib(const unsigned char* data,
                  int decompress,
                  unsigned char** out);
 
-#endif  /* SRC_NBT_PRIVATE_H_ */
+#endif  /* SRC_FORMAT_NBT_PRIVATE_H_ */

@@ -6,12 +6,12 @@
 #include "client.h"
 #include "client-private.h"
 #include "uv.h"
-#include "common.h"  /* mc_string_t */
-#include "common-private.h"  /* container_of */
 #include "openssl/evp.h"  /* EVP_* */
 #include "protocol/framer.h"  /* mc_framer_t */
 #include "protocol/parser.h"  /* mc_parser_execute */
 #include "server.h"  /* mc_server_t */
+#include "utils/string.h"  /* mc_string_t */
+#include "utils/common-private.h"  /* container_of */
 
 static void mc_client__on_close(uv_handle_t* handle);
 static void mc_client__on_timeout(uv_timer_t* handle, int status);

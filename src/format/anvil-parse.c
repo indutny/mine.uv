@@ -3,9 +3,9 @@
 #include <stdlib.h>  /* calloc, free, NULL */
 #include <string.h>  /* memcpy */
 
-#include "anvil.h"
-#include "nbt.h"
-#include "common.h"
+#include "format/anvil.h"
+#include "format/nbt.h"
+#include "utils/common.h"
 
 static int mc_anvil__parse_column(mc_nbt_t* nbt, mc_column_t* col);
 static int mc_anvil__parse_biomes(mc_nbt_t* level, mc_column_t* col);

@@ -1,11 +1,11 @@
-#ifndef SRC_FRAMER_H_
-#define SRC_FRAMER_H_
+#ifndef SRC_PROTOCOL_FRAMER_H_
+#define SRC_PROTOCOL_FRAMER_H_
 
 #include <stdint.h>  /* uint8_t */
 
 #include "uv.h"  /* uv_stream_t */
-#include "common.h"  /* mc_string_t */
-#include "encoder.h"  /* mc_encoder_t */
+#include "utils/string.h"  /* mc_string_t */
+#include "utils/encoder.h"  /* mc_encoder_t */
 #include "openssl/evp.h"  /* EVP_CIPHER_CTX */
 
 typedef struct mc_framer_s mc_framer_t;
@@ -48,4 +48,4 @@ int mc_framer_login_req(mc_framer_t* framer,
                         uint8_t max_players);
 int mc_framer_kick(mc_framer_t* framer, mc_string_t* reason);
 
-#endif  /* SRC_FRAMER_H_ */
+#endif  /* SRC_PROTOCOL_FRAMER_H_ */

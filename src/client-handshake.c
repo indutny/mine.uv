@@ -5,14 +5,14 @@
 #include "client.h"
 #include "client-private.h"
 #include "uv.h"
-#include "common.h"  /* mc_string_t */
-#include "common-private.h"  /* ARRAY_SIZE */
 #include "openssl/evp.h"  /* EVP_* */
 #include "openssl/rand.h"  /* RAND_bytes */
 #include "openssl/rsa.h"  /* RSA_* */
 #include "protocol/framer.h"  /* mc_framer_t */
 #include "server.h"  /* mc_server_t */
 #include "session.h"  /* mc_session_verify_t */
+#include "utils/string.h"  /* mc_string_t */
+#include "utils/common-private.h"  /* ARRAY_SIZE */
 
 static int mc_client__send_enc_req(mc_client_t* client);
 static int mc_client__check_enc_res(mc_client_t* client, mc_frame_t* frame);

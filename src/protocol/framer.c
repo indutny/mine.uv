@@ -2,11 +2,11 @@
 #include <stdlib.h>  /* malloc, free, realloc */
 #include <string.h>  /* memcpy */
 
-#include "framer.h"
+#include "protocol/framer.h"
 #include "uv.h"  /* uv_write */
-#include "common.h"  /* mc_frame_t */
-#include "common-private.h"  /* container_of */
-#include "encoder.h"  /* mc_encoder_t */
+#include "utils/common.h"  /* mc_frame_t */
+#include "utils/common-private.h"  /* container_of */
+#include "utils/encoder.h"  /* mc_encoder_t */
 #include "openssl/evp.h"  /* EVP_* */
 
 #define WRITE(framer, t, v) MC_ENCODER_WRITE(&(framer)->encoder, t, v)
