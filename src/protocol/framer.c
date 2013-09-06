@@ -6,11 +6,11 @@
 #include "uv.h"  /* uv_write */
 #include "utils/common.h"  /* mc_frame_t */
 #include "utils/common-private.h"  /* container_of */
-#include "utils/encoder.h"  /* mc_encoder_t */
+#include "utils/buffer.h"  /* mc_buffer_t */
 #include "openssl/evp.h"  /* EVP_* */
 
-#define WRITE(framer, t, v) MC_ENCODER_WRITE(&(framer)->encoder, t, v)
-#define WRITE_RAW(framer, d, l) MC_ENCODER_WRITE_DATA(&(framer)->encoder, d, l)
+#define WRITE(framer, t, v) MC_BUFFER_WRITE(&(framer)->buffer, t, v)
+#define WRITE_RAW(framer, d, l) MC_BUFFER_WRITE_DATA(&(framer)->buffer, d, l)
 
 typedef struct mc_framer__req_s mc_framer__req_t;
 
@@ -29,7 +29,7 @@ static void mc_framer__after_send(uv_write_t* req, int status);
 int mc_framer_init(mc_framer_t* framer) {
   int r;
 
-  r = mc_encoder_init(&framer->encoder, 0);
+  r = mc_buffer_init(&framer->buffer, 0);
   if (r != 0)
     return r;
   framer->aes = NULL;
@@ -39,7 +39,7 @@ int mc_framer_init(mc_framer_t* framer) {
 
 
 void mc_framer_destroy(mc_framer_t* framer) {
-  mc_encoder_destroy(&framer->encoder);
+  mc_buffer_destroy(&framer->buffer);
   framer->aes = NULL;
 }
 
@@ -59,7 +59,7 @@ int mc_framer_send(mc_framer_t* framer,
   char* data;
   int packet_len;
 
-  packet_len = mc_encoder_len(&framer->encoder);
+  packet_len = mc_buffer_len(&framer->buffer);
 
   /* Account space for possible AES padding */
   if (framer->aes != NULL)
@@ -75,14 +75,14 @@ int mc_framer_send(mc_framer_t* framer,
 
   data = ((char*) req) + sizeof(*req);
   if (framer->aes == NULL) {
-    memcpy(data, mc_encoder_data(&framer->encoder), req->len);
+    memcpy(data, mc_buffer_data(&framer->buffer), req->len);
   } else {
     aes_len = req->len;
     r = EVP_EncryptUpdate(framer->aes,
                           (unsigned char*) data,
                           &aes_len,
-                          mc_encoder_data(&framer->encoder),
-                          mc_encoder_len(&framer->encoder));
+                          mc_buffer_data(&framer->buffer),
+                          mc_buffer_len(&framer->buffer));
     if (r != 1) {
       free(req);
       return -1;
@@ -94,7 +94,7 @@ int mc_framer_send(mc_framer_t* framer,
   r = uv_write(&req->req, stream, &buf, 1, mc_framer__after_send);
 
   /* Clear state */
-  mc_encoder_reset(&framer->encoder);
+  mc_buffer_reset(&framer->buffer);
 
   return r;
 }

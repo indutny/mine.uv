@@ -36,7 +36,7 @@
       "src/protocol/framer.c",
       "src/protocol/parser.c",
 
-      "src/utils/encoder.c",
+      "src/utils/buffer.c",
       "src/utils/common.c",
       "src/utils/string.c",
 

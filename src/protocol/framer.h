@@ -5,14 +5,14 @@
 
 #include "uv.h"  /* uv_stream_t */
 #include "utils/string.h"  /* mc_string_t */
-#include "utils/encoder.h"  /* mc_encoder_t */
+#include "utils/buffer.h"  /* mc_buffer_t */
 #include "openssl/evp.h"  /* EVP_CIPHER_CTX */
 
 typedef struct mc_framer_s mc_framer_t;
 typedef void (*mc_framer_send_cb_t)(mc_framer_t*, int status);
 
 struct mc_framer_s {
-  mc_encoder_t encoder;
+  mc_buffer_t buffer;
   EVP_CIPHER_CTX* aes;
 };
 
