@@ -7,10 +7,10 @@
 #include "uv.h"
 #include "common.h"  /* mc_string_t */
 #include "common-private.h"  /* ARRAY_SIZE */
-#include "framer.h"  /* mc_framer_t */
 #include "openssl/evp.h"  /* EVP_* */
 #include "openssl/rand.h"  /* RAND_bytes */
 #include "openssl/rsa.h"  /* RSA_* */
+#include "protocol/framer.h"  /* mc_framer_t */
 #include "server.h"  /* mc_server_t */
 #include "session.h"  /* mc_session_verify_t */
 

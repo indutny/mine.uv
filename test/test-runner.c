@@ -1,9 +1,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "anvil.h"
 #include "common.h"
-#include "nbt.h"
+#include "format/anvil.h"
+#include "format/nbt.h"
 #include "world.h"
 
 #define ASSERT(cond, str) \

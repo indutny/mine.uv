@@ -8,7 +8,7 @@
 #include <unistd.h>  /* read, write */
 
 #include "common.h"
-#include "nbt.h"  /* mc_nbt_destroy */
+#include "format/nbt.h"  /* mc_nbt_destroy */
 
 static void mc_chunk__destroy(mc_chunk_t* block);
 static void mc_block__destroy(mc_block_t* block);

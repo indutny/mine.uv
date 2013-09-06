@@ -1,7 +1,8 @@
 #include <stdlib.h>  /* malloc, free, NULL */
 #include <string.h>  /* strdup */
+
 #include "world.h"
-#include "nbt.h"
+#include "format/nbt.h"
 
 
 mc_world_t* mc_world_new(const char* path) {

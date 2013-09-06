@@ -8,9 +8,9 @@
 #include "uv.h"
 #include "common.h"  /* mc_string_t */
 #include "common-private.h"  /* container_of */
-#include "framer.h"  /* mc_framer_t */
 #include "openssl/evp.h"  /* EVP_* */
-#include "parser.h"  /* mc_parser_execute */
+#include "protocol/framer.h"  /* mc_framer_t */
+#include "protocol/parser.h"  /* mc_parser_execute */
 #include "server.h"  /* mc_server_t */
 
 static void mc_client__on_close(uv_handle_t* handle);

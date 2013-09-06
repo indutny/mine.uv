@@ -5,8 +5,8 @@
 
 #include "uv.h"
 #include "common.h"  /* mc_string_t */
-#include "framer.h"  /* mc_farmer_t */
 #include "openssl/evp.h"  /* EVP_CIPHER_CTX, EVP_MAX_MD_SIZE */
+#include "protocol/framer.h"  /* mc_farmer_t */
 #include "server.h"  /* mc_server_t */
 #include "session.h"  /* mc_session_verify_t */
 
