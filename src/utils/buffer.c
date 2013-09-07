@@ -30,7 +30,7 @@ int mc_buffer_init(mc_buffer_t* buffer, int capacity) {
   buffer->len = 0;
   buffer->offset = 0;
   buffer->capacity = capacity == 0 ? kDefaultCapacity : capacity;
-  buffer->data = malloc(buffer->len);
+  buffer->data = malloc(buffer->capacity);
   if (buffer->data == NULL)
     return kMCBufferNoMem;
   return 0;
