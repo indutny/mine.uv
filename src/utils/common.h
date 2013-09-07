@@ -96,6 +96,8 @@ static const int kMCColumnMaxY = MC__COLUMN_MAX_Y;
 static const int kMCChunkMaxX = MC__CHUNK_MAX_X;
 static const int kMCChunkMaxZ = MC__CHUNK_MAX_Z;
 static const int kMCChunkMaxY = MC__CHUNK_MAX_Y;
+static const int kMCMaxHeldSlot = 8;
+static const int kMCMaxInventorySlot = 44;
 
 enum mc_frame_type_e {
   /* Sent by both */

@@ -3,6 +3,8 @@
 #include <string.h>  /* memcpy */
 
 #include "utils/buffer.h"
+#include "utils/common.h"  /* mc_slot_t */
+#include "utils/string.h"  /* mc_string_t */
 
 #define GROW(buffer, size) \
     do { \
@@ -58,6 +60,11 @@ void mc_buffer_destroy(mc_buffer_t* buffer) {
 
 unsigned char* mc_buffer_data(mc_buffer_t* buffer) {
   return buffer->data;
+}
+
+
+int mc_buffer_offset(mc_buffer_t* buffer) {
+  return buffer->offset;
 }
 
 
@@ -212,12 +219,73 @@ int mc_buffer_read_i64(mc_buffer_t* buffer, int64_t* value) {
 }
 
 
-int mc_buffer_read_data(mc_buffer_t* buffer, void* data, int len) {
+int mc_buffer_read_float(mc_buffer_t* buffer, float* value) {
+  if (buffer->offset + 4 > buffer->len)
+    return kMCBufferOOB;
+
+  *value = *READ_PTR(buffer, float);
+  buffer->offset += 4;
+
+  return 0;
+}
+
+
+int mc_buffer_read_double(mc_buffer_t* buffer, double* value) {
+  if (buffer->offset + 8 > buffer->len)
+    return kMCBufferOOB;
+
+  *value = *READ_PTR(buffer, double);
+  buffer->offset += 8;
+
+  return 0;
+}
+
+
+int mc_buffer_read_data(mc_buffer_t* buffer, unsigned char** data, int len) {
   if (buffer->offset + len > buffer->len)
     return kMCBufferOOB;
 
-  memcpy(data, READ_PTR(buffer, void), len);
+  *data = READ_PTR(buffer, unsigned char);
   buffer->offset += len;
+
+  return 0;
+}
+
+
+int mc_buffer_read_string(mc_buffer_t* buffer, mc_string_t* str) {
+  uint16_t len;
+  int raw_len;
+
+  mc_string_init(str);
+
+  MC_BUFFER_READ(buffer, u16, &len);
+  raw_len = len * sizeof(*str->data);
+  if (raw_len + buffer->offset > buffer->len)
+    return kMCBufferOOB;
+
+  str->data = READ_PTR(buffer, uint16_t);
+  str->len = len;
+
+  buffer->offset += raw_len;
+
+  return 0;
+}
+
+
+int mc_buffer_read_slot(mc_buffer_t* buffer, mc_slot_t* slot) {
+  mc_slot_init(slot);
+
+  MC_BUFFER_READ(buffer, u16, &slot->id);
+  if (slot->id == 0xffff)
+    return 0;
+
+  MC_BUFFER_READ(buffer, u16, &slot->count);
+  MC_BUFFER_READ(buffer, u16, &slot->damage);
+  MC_BUFFER_READ(buffer, u16, &slot->nbt_len);
+  if (slot->nbt_len == 0xfff)
+    return 0;
+
+  MC_BUFFER_READ_DATA(buffer, &slot->nbt, slot->nbt_len);
 
   return 0;
 }

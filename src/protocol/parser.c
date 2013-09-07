@@ -4,91 +4,58 @@
 #include <stdlib.h>  /* abort */
 
 #include "protocol/parser.h"
+#include "utils/buffer.h"  /* mc_buffer_t */
 #include "utils/common.h"  /* mc_slot_t */
 #include "utils/string.h"  /* mc_string_t */
 
-#define PARSE_READ(p, type, out) \
-    do { \
-      int r; \
-      r = mc_parser__read_##type((p), (out)); \
-      if (r <= 0) \
-        return r; \
-    } while (0)
-
-#define PARSE_READ_RAW(p, out, size) \
-    do { \
-      int r; \
-      r = mc_parser__read_raw((p), (out), (size)); \
-      if (r <= 0) \
-        return r; \
-    } while (0)
-
-typedef struct mc_parser_s mc_parser_t;
-
-static int mc_parser__read_u8(mc_parser_t* p, uint8_t* out);
-static int mc_parser__read_u16(mc_parser_t* p, uint16_t* out);
-static int mc_parser__read_u32(mc_parser_t* p, uint32_t* out);
-static int mc_parser__read_u64(mc_parser_t* p, uint64_t* out);
-static int mc_parser__read_float(mc_parser_t* p, float* out);
-static int mc_parser__read_double(mc_parser_t* p, double* out);
-static int mc_parser__read_string(mc_parser_t* p, mc_string_t* str);
-static int mc_parser__read_slot(mc_parser_t* p, mc_slot_t* slot);
-static int mc_parser__read_raw(mc_parser_t* p,
-                               unsigned char** out,
-                               size_t size);
-
-static int mc_parser__parse_login_req(mc_parser_t* p, mc_frame_t* frame);
-static int mc_parser__parse_handshake(mc_parser_t* p, mc_frame_t* frame);
-static int mc_parser__parse_use_entity(mc_parser_t* p, mc_frame_t* frame);
-static int mc_parser__parse_pos(mc_parser_t* p, mc_frame_t* frame);
-static int mc_parser__parse_look(mc_parser_t* p, mc_frame_t* frame);
-static int mc_parser__parse_pos_and_look(mc_parser_t* p, mc_frame_t* frame);
-static int mc_parser__parse_digging(mc_parser_t* p, mc_frame_t* frame);
-static int mc_parser__parse_block_placement(mc_parser_t* p, mc_frame_t* frame);
-static int mc_parser__parse_steer_vehicle(mc_parser_t* p, mc_frame_t* frame);
-static int mc_parser__parse_click_window(mc_parser_t* p, mc_frame_t* frame);
-static int mc_parser__parse_confirm_transaction(mc_parser_t* p,
+static int mc_parser__parse_login_req(mc_buffer_t* b, mc_frame_t* frame);
+static int mc_parser__parse_handshake(mc_buffer_t* b, mc_frame_t* frame);
+static int mc_parser__parse_use_entity(mc_buffer_t* b, mc_frame_t* frame);
+static int mc_parser__parse_pos(mc_buffer_t* b, mc_frame_t* frame);
+static int mc_parser__parse_look(mc_buffer_t* b, mc_frame_t* frame);
+static int mc_parser__parse_pos_and_look(mc_buffer_t* b, mc_frame_t* frame);
+static int mc_parser__parse_digging(mc_buffer_t* b, mc_frame_t* frame);
+static int mc_parser__parse_block_placement(mc_buffer_t* b, mc_frame_t* frame);
+static int mc_parser__parse_steer_vehicle(mc_buffer_t* b, mc_frame_t* frame);
+static int mc_parser__parse_click_window(mc_buffer_t* b, mc_frame_t* frame);
+static int mc_parser__parse_confirm_transaction(mc_buffer_t* b,
                                                 mc_frame_t* frame);
-static int mc_parser__parse_update_sign(mc_parser_t* p, mc_frame_t* frame);
-static int mc_parser__parse_abilities(mc_parser_t* p, mc_frame_t* frame);
-static int mc_parser__parse_settings(mc_parser_t* p, mc_frame_t* frame);
-static int mc_parser__parse_enc_resp(mc_parser_t* p, mc_frame_t* frame);
-static int mc_parser__parse_plugin_msg(mc_parser_t* p, mc_frame_t* frame);
-
-struct mc_parser_s {
-  const unsigned char* data;
-  size_t offset;
-  size_t len;
-};
-
+static int mc_parser__parse_update_sign(mc_buffer_t* b, mc_frame_t* frame);
+static int mc_parser__parse_abilities(mc_buffer_t* b, mc_frame_t* frame);
+static int mc_parser__parse_settings(mc_buffer_t* b, mc_frame_t* frame);
+static int mc_parser__parse_enc_resp(mc_buffer_t* b, mc_frame_t* frame);
+static int mc_parser__parse_plugin_msg(mc_buffer_t* b, mc_frame_t* frame);
 
 int mc_parser_execute(uint8_t* data, int len, mc_frame_t* frame) {
+  int r;
   uint8_t type;
   uint8_t tmp;
-  mc_parser_t parser;
+  mc_buffer_t buffer;
 
-  parser.data = data;
-  parser.offset = 0;
-  parser.len = len;
+  mc_buffer_from_data(&buffer, data, len);
 
-  PARSE_READ(&parser, u8, &type);
+  MC_BUFFER_READ(&buffer, u8, &type);
   frame->type = (mc_frame_type_t) type;
 
+  r = 0;
   switch (frame->type) {
     case kMCKeepAliveType:
-      PARSE_READ(&parser, u32, &frame->body.keepalive);
+      MC_BUFFER_READ(&buffer, u32, &frame->body.keepalive);
       break;
     case kMCLoginReqType:
-      return mc_parser__parse_login_req(&parser, frame);
+      r = mc_parser__parse_login_req(&buffer, frame);
+      break;
     case kMCHandshakeType:
-      return mc_parser__parse_handshake(&parser, frame);
+      r = mc_parser__parse_handshake(&buffer, frame);
+      break;
     case kMCChatMsgType:
-      PARSE_READ(&parser, string, &frame->body.chat_msg);
-      return parser.offset;
+      MC_BUFFER_READ(&buffer, string, &frame->body.chat_msg);
+      break;
     case kMCUseEntityType:
-      return mc_parser__parse_use_entity(&parser, frame);
+      r = mc_parser__parse_use_entity(&buffer, frame);
+      break;
     case kMCPlayerType:
-      PARSE_READ(&parser, u8, &frame->body.pos_and_look.on_ground);
+      MC_BUFFER_READ(&buffer, u8, &frame->body.pos_and_look.on_ground);
       frame->body.pos_and_look.x = 0;
       frame->body.pos_and_look.y = 0;
       frame->body.pos_and_look.z = 0;
@@ -97,338 +64,223 @@ int mc_parser_execute(uint8_t* data, int len, mc_frame_t* frame) {
       frame->body.pos_and_look.pitch = 0;
       break;
     case kMCPlayerPosType:
-      return mc_parser__parse_pos(&parser, frame);
+      r = mc_parser__parse_pos(&buffer, frame);
+      break;
     case kMCPlayerLookType:
-      return mc_parser__parse_look(&parser, frame);
+      r = mc_parser__parse_look(&buffer, frame);
+      break;
     case kMCPosAndLookType:
-      return mc_parser__parse_pos_and_look(&parser, frame);
+      r = mc_parser__parse_pos_and_look(&buffer, frame);
+      break;
     case kMCDiggingType:
-      return mc_parser__parse_digging(&parser, frame);
+      r = mc_parser__parse_digging(&buffer, frame);
+      break;
     case kMCBlockPlacementType:
-      return mc_parser__parse_block_placement(&parser, frame);
+      r = mc_parser__parse_block_placement(&buffer, frame);
+      break;
     case kMCHeldItemChangeType:
-      PARSE_READ(&parser, u16, &frame->body.held_item_change.slot_id);
-      if (frame->body.held_item_change.slot_id > 8)
-        return -1;
+      MC_BUFFER_READ(&buffer, u16, &frame->body.held_item_change.slot_id);
+      if (frame->body.held_item_change.slot_id > kMCMaxHeldSlot)
+        return kMCBufferUnknown;
       break;
     case kMCAnimationType:
-      PARSE_READ(&parser, u32, &frame->body.animation.entity_id);
-      PARSE_READ(&parser, u8, &tmp);
+      MC_BUFFER_READ(&buffer, u32, &frame->body.animation.entity_id);
+      MC_BUFFER_READ(&buffer, u8, &tmp);
       frame->body.animation.kind = (mc_animation_t) tmp;
       break;
     case kMCEntityActionType:
-      PARSE_READ(&parser, u32, &frame->body.entity_action.entity_id);
-      PARSE_READ(&parser, u8, &tmp);
+      MC_BUFFER_READ(&buffer, u32, &frame->body.entity_action.entity_id);
+      MC_BUFFER_READ(&buffer, u8, &tmp);
       frame->body.entity_action.action = (mc_entity_action_t) tmp;
-      PARSE_READ(&parser, u32, &frame->body.entity_action.boost);
+      MC_BUFFER_READ(&buffer, u32, &frame->body.entity_action.boost);
       if (frame->body.entity_action.boost > 100)
-        return -1;
+        return kMCBufferUnknown;
       break;
     case kMCSteerVehicleType:
-      return mc_parser__parse_steer_vehicle(&parser, frame);
+      return mc_parser__parse_steer_vehicle(&buffer, frame);
     case kMCCloseWindowType:
-      PARSE_READ(&parser, u8, (uint8_t*) &frame->body.close_window);
+      MC_BUFFER_READ(&buffer, u8, (uint8_t*) &frame->body.close_window);
       break;
     case kMCClickWindowType:
-      return mc_parser__parse_click_window(&parser, frame);
+      r = mc_parser__parse_click_window(&buffer, frame);
+      break;
     case kMCConfirmTransactionType:
-      return mc_parser__parse_confirm_transaction(&parser, frame);
+      r = mc_parser__parse_confirm_transaction(&buffer, frame);
+      break;
     case kMCCreativeInvActionType:
-      PARSE_READ(&parser, u8, (uint8_t*) &frame->body.creative_action.slot);
-      PARSE_READ(&parser, slot, &frame->body.creative_action.clicked_slot);
-      if (frame->body.creative_action.slot > 8)
-        return -1;
+      MC_BUFFER_READ(&buffer, u8, (uint8_t*) &frame->body.creative_action.slot);
+      MC_BUFFER_READ(&buffer, slot, &frame->body.creative_action.clicked_slot);
+      if (frame->body.creative_action.slot > kMCMaxInventorySlot)
+        return kMCBufferUnknown;
       break;
     case kMCEnchantItemType:
-      PARSE_READ(&parser, u8, (uint8_t*) &frame->body.enchant_item.window);
-      PARSE_READ(&parser, u8, (uint8_t*) &frame->body.enchant_item.enchantment);
+      MC_BUFFER_READ(&buffer, u8, (uint8_t*) &frame->body.enchant_item.window);
+      MC_BUFFER_READ(&buffer, u8, (uint8_t*) &frame->body.enchant_item.enchantment);
       break;
     case kMCUpdateSignType:
-      return mc_parser__parse_update_sign(&parser, frame);
+      r = mc_parser__parse_update_sign(&buffer, frame);
+      break;
     case kMCPlayerAbilitiesType:
-      return mc_parser__parse_abilities(&parser, frame);
+      r = mc_parser__parse_abilities(&buffer, frame);
+      break;
     case kMCTabCompleteType:
-      PARSE_READ(&parser, string, &frame->body.tab_complete);
+      MC_BUFFER_READ(&buffer, string, &frame->body.tab_complete);
       break;
     case kMCClientSettingsType:
-      return mc_parser__parse_settings(&parser, frame);
+      r = mc_parser__parse_settings(&buffer, frame);
+      break;
     case kMCClientStatusType:
-      PARSE_READ(&parser, u8, &tmp);
+      MC_BUFFER_READ(&buffer, u8, &tmp);
       frame->body.client_status = (mc_client_status_t) tmp;
       break;
     case kMCEncryptionResType:
-      return mc_parser__parse_enc_resp(&parser, frame);
+      r = mc_parser__parse_enc_resp(&buffer, frame);
+      break;
     case kMCPluginMsgType:
-      return mc_parser__parse_plugin_msg(&parser, frame);
+      r = mc_parser__parse_plugin_msg(&buffer, frame);
+      break;
     case kMCServerListPingType:
-      PARSE_READ(&parser, u8, (uint8_t*) &frame->body.server_list_ping);
+      MC_BUFFER_READ(&buffer, u8, (uint8_t*) &frame->body.server_list_ping);
       break;
     case kMCKickType:
-      PARSE_READ(&parser, string, &frame->body.kick);
+      MC_BUFFER_READ(&buffer, string, &frame->body.kick);
       break;
     default:
       /* Unknown frame, or frame should be sent by server */
-      return -1;
+      return kMCBufferUnknown;
   }
 
-  return parser.offset;
+  if (r == 0)
+    return mc_buffer_offset(&buffer);
+  else
+    return r;
 }
 
 
-int mc_parser__read_u8(mc_parser_t* p, uint8_t* out) {
-  if (p->len < 1)
-    return 0;
-  *out = p->data[0];
-  p->data++;
-  p->offset++;
-  p->len--;
+int mc_parser__parse_login_req(mc_buffer_t* b, mc_frame_t* frame) {
+  if (b->len < 11)
+    return kMCBufferOOB;
 
-  return 1;
+  MC_BUFFER_READ(b, u32, &frame->body.login_req.entity_id);
+  MC_BUFFER_READ(b, string, &frame->body.login_req.level);
+  MC_BUFFER_READ(b, u8, &frame->body.login_req.game_mode);
+  MC_BUFFER_READ(b, u8, (uint8_t*) &frame->body.login_req.dimension);
+  MC_BUFFER_READ(b, u8, &frame->body.login_req.difficulty);
+  MC_BUFFER_READ(b, u8, &frame->body.login_req.max_players);
+
+  return 0;
 }
 
 
-int mc_parser__read_u16(mc_parser_t* p, uint16_t* out) {
-  if (p->len < 2)
-    return 0;
-  *out = ntohs(*(uint16_t*) p->data);
-  p->data += 2;
-  p->offset += 2;
-  p->len -= 2;
+int mc_parser__parse_handshake(mc_buffer_t* b, mc_frame_t* frame) {
+  if (b->len < 9)
+    return kMCBufferOOB;
 
-  return 1;
+  MC_BUFFER_READ(b, u8, &frame->body.handshake.version);
+  MC_BUFFER_READ(b, string, &frame->body.handshake.username);
+  MC_BUFFER_READ(b, string, &frame->body.handshake.host);
+  MC_BUFFER_READ(b, u32, &frame->body.handshake.port);
+
+  return 0;
 }
 
 
-int mc_parser__read_u32(mc_parser_t* p, uint32_t* out) {
-  if (p->len < 4)
-    return 0;
-  *out = ntohl(*(uint32_t*) p->data);
-  p->data += 4;
-  p->offset += 4;
-  p->len -= 4;
+int mc_parser__parse_use_entity(mc_buffer_t* b, mc_frame_t* frame) {
+  if (b->len < 9)
+    return kMCBufferOOB;
 
-  return 1;
+  MC_BUFFER_READ(b, u32, &frame->body.use_entity.user);
+  MC_BUFFER_READ(b, u32, &frame->body.use_entity.target);
+  MC_BUFFER_READ(b, u8, &frame->body.use_entity.button);
+
+  return 0;
 }
 
 
-int mc_parser__read_u64(mc_parser_t* p, uint64_t* out) {
-  uint32_t hi;
-  uint32_t lo;
-  if (p->len < 8)
-    return 0;
+int mc_parser__parse_pos(mc_buffer_t* b, mc_frame_t* frame) {
+  if (b->len < 33)
+    return kMCBufferOOB;
 
-  PARSE_READ(p, u32, &hi);
-  PARSE_READ(p, u32, &lo);
-  *out = ((uint64_t) hi << 32) | lo;
-
-  return 1;
-}
-
-
-int mc_parser__read_float(mc_parser_t* p, float* out) {
-  if (p->len < 4)
-    return 0;
-
-  *out = *(float*) p->data;
-  p->data += 4;
-  p->offset += 4;
-  p->len -= 4;
-
-  return 1;
-}
-
-
-int mc_parser__read_double(mc_parser_t* p, double* out) {
-  if (p->len < 8)
-    return 0;
-
-  *out = *(double*) p->data;
-  p->data += 8;
-  p->offset += 8;
-  p->len -= 8;
-
-  return 1;
-}
-
-
-int mc_parser__read_string(mc_parser_t* p, mc_string_t* str) {
-  uint16_t len;
-  size_t raw_len;
-
-  mc_string_init(str);
-
-  PARSE_READ(p, u16, &len);
-  raw_len = len * sizeof(*str->data);
-  if (p->len < raw_len)
-    return 0;
-
-  str->data = (uint16_t*) p->data;
-  str->len = len;
-
-  p->data += raw_len;
-  p->offset += raw_len;
-  p->len -= raw_len;
-
-  return 1;
-}
-
-
-int mc_parser__read_slot(mc_parser_t* p, mc_slot_t* slot) {
-  mc_slot_init(slot);
-
-  PARSE_READ(p, u16, &slot->id);
-  if (slot->id == 0xffff)
-    return 1;
-
-  PARSE_READ(p, u16, &slot->count);
-  PARSE_READ(p, u16, &slot->damage);
-  PARSE_READ(p, u16, &slot->nbt_len);
-  if (slot->nbt_len == 0xfff)
-    return 1;
-
-  PARSE_READ_RAW(p, &slot->nbt, slot->nbt_len);
-
-  return 1;
-}
-
-
-int mc_parser__read_raw(mc_parser_t* p, unsigned char** out, size_t size) {
-  if (p->len < size)
-    return 0;
-
-  *out = (unsigned char*) p->data;
-  p->data += size;
-  p->offset += size;
-  p->len -= size;
-
-  return 1;
-}
-
-
-int mc_parser__parse_login_req(mc_parser_t* p, mc_frame_t* frame) {
-  if (p->len < 11)
-    return 0;
-
-  PARSE_READ(p, u32, &frame->body.login_req.entity_id);
-  PARSE_READ(p, string, &frame->body.login_req.level);
-  PARSE_READ(p, u8, &frame->body.login_req.game_mode);
-  PARSE_READ(p, u8, (uint8_t*) &frame->body.login_req.dimension);
-  PARSE_READ(p, u8, &frame->body.login_req.difficulty);
-  PARSE_READ(p, u8, &frame->body.login_req.max_players);
-
-  return p->offset;
-}
-
-
-int mc_parser__parse_handshake(mc_parser_t* p, mc_frame_t* frame) {
-  if (p->len < 9)
-    return 0;
-
-  PARSE_READ(p, u8, &frame->body.handshake.version);
-  PARSE_READ(p, string, &frame->body.handshake.username);
-  PARSE_READ(p, string, &frame->body.handshake.host);
-  PARSE_READ(p, u32, &frame->body.handshake.port);
-
-  return p->offset;
-}
-
-
-int mc_parser__parse_use_entity(mc_parser_t* p, mc_frame_t* frame) {
-  if (p->len < 9)
-    return 0;
-
-  PARSE_READ(p, u32, &frame->body.use_entity.user);
-  PARSE_READ(p, u32, &frame->body.use_entity.target);
-  PARSE_READ(p, u8, &frame->body.use_entity.button);
-
-  return p->offset;
-}
-
-
-int mc_parser__parse_pos(mc_parser_t* p, mc_frame_t* frame) {
-  if (p->len < 33)
-    return 0;
-
-  PARSE_READ(p, double, &frame->body.pos_and_look.x);
-  PARSE_READ(p, double, &frame->body.pos_and_look.y);
-  PARSE_READ(p, double, &frame->body.pos_and_look.stance);
-  PARSE_READ(p, double, &frame->body.pos_and_look.z);
-  PARSE_READ(p, u8, &frame->body.pos_and_look.on_ground);
+  MC_BUFFER_READ(b, double, &frame->body.pos_and_look.x);
+  MC_BUFFER_READ(b, double, &frame->body.pos_and_look.y);
+  MC_BUFFER_READ(b, double, &frame->body.pos_and_look.stance);
+  MC_BUFFER_READ(b, double, &frame->body.pos_and_look.z);
+  MC_BUFFER_READ(b, u8, &frame->body.pos_and_look.on_ground);
 
   frame->body.pos_and_look.yaw = 0;
   frame->body.pos_and_look.pitch = 0;
 
-  return p->offset;
+  return 0;
 }
 
 
-int mc_parser__parse_look(mc_parser_t* p, mc_frame_t* frame) {
-  if (p->len < 9)
-    return 0;
+int mc_parser__parse_look(mc_buffer_t* b, mc_frame_t* frame) {
+  if (b->len < 9)
+    return kMCBufferOOB;
 
-  PARSE_READ(p, float, &frame->body.pos_and_look.yaw);
-  PARSE_READ(p, float, &frame->body.pos_and_look.pitch);
-  PARSE_READ(p, u8, &frame->body.pos_and_look.on_ground);
+  MC_BUFFER_READ(b, float, &frame->body.pos_and_look.yaw);
+  MC_BUFFER_READ(b, float, &frame->body.pos_and_look.pitch);
+  MC_BUFFER_READ(b, u8, &frame->body.pos_and_look.on_ground);
 
   frame->body.pos_and_look.x = 0;
   frame->body.pos_and_look.y = 0;
   frame->body.pos_and_look.z = 0;
   frame->body.pos_and_look.stance = 0;
 
-  return p->offset;
+  return 0;
 }
 
 
-int mc_parser__parse_pos_and_look(mc_parser_t* p, mc_frame_t* frame) {
-  if (p->len < 41)
-    return 0;
+int mc_parser__parse_pos_and_look(mc_buffer_t* b, mc_frame_t* frame) {
+  if (b->len < 41)
+    return kMCBufferOOB;
 
-  PARSE_READ(p, double, &frame->body.pos_and_look.x);
-  PARSE_READ(p, double, &frame->body.pos_and_look.y);
-  PARSE_READ(p, double, &frame->body.pos_and_look.stance);
-  PARSE_READ(p, double, &frame->body.pos_and_look.z);
-  PARSE_READ(p, float, &frame->body.pos_and_look.yaw);
-  PARSE_READ(p, float, &frame->body.pos_and_look.pitch);
-  PARSE_READ(p, u8, &frame->body.pos_and_look.on_ground);
+  MC_BUFFER_READ(b, double, &frame->body.pos_and_look.x);
+  MC_BUFFER_READ(b, double, &frame->body.pos_and_look.y);
+  MC_BUFFER_READ(b, double, &frame->body.pos_and_look.stance);
+  MC_BUFFER_READ(b, double, &frame->body.pos_and_look.z);
+  MC_BUFFER_READ(b, float, &frame->body.pos_and_look.yaw);
+  MC_BUFFER_READ(b, float, &frame->body.pos_and_look.pitch);
+  MC_BUFFER_READ(b, u8, &frame->body.pos_and_look.on_ground);
 
-  return p->offset;
+  return 0;
 }
 
 
-int mc_parser__parse_digging(mc_parser_t* p, mc_frame_t* frame) {
+int mc_parser__parse_digging(mc_buffer_t* b, mc_frame_t* frame) {
   uint8_t tmp;
 
-  if (p->len < 11)
-    return 0;
+  if (b->len < 11)
+    return kMCBufferOOB;
 
-  PARSE_READ(p, u8, &tmp);
+  MC_BUFFER_READ(b, u8, &tmp);
   if (tmp > 5)
     return -1;
   frame->body.digging.status = (mc_digging_status_t) tmp;
-  PARSE_READ(p, u32, (uint32_t*) &frame->body.digging.x);
-  PARSE_READ(p, u8, (uint8_t*) &frame->body.digging.y);
-  PARSE_READ(p, u32, (uint32_t*) &frame->body.digging.z);
-  PARSE_READ(p, u8, &tmp);
+  MC_BUFFER_READ(b, u32, (uint32_t*) &frame->body.digging.x);
+  MC_BUFFER_READ(b, u8, (uint8_t*) &frame->body.digging.y);
+  MC_BUFFER_READ(b, u32, (uint32_t*) &frame->body.digging.z);
+  MC_BUFFER_READ(b, u8, &tmp);
   if (tmp > 5)
     return -1;
   frame->body.digging.face = (mc_face_t) tmp;
 
-  return p->offset;
+  return 0;
 }
 
 
-int mc_parser__parse_block_placement(mc_parser_t* p, mc_frame_t* frame) {
-  if (p->len < 13)
-    return 0;
+int mc_parser__parse_block_placement(mc_buffer_t* b, mc_frame_t* frame) {
+  if (b->len < 13)
+    return kMCBufferOOB;
 
-  PARSE_READ(p, u32, (uint32_t*) &frame->body.block_placement.x);
-  PARSE_READ(p, u8, &frame->body.block_placement.y);
-  PARSE_READ(p, u32, (uint32_t*) &frame->body.block_placement.z);
-  PARSE_READ(p, u8, (uint8_t*) &frame->body.block_placement.direction);
-  PARSE_READ(p, slot, &frame->body.block_placement.held_item);
-  PARSE_READ(p, u8, (uint8_t*) &frame->body.block_placement.cursor_x);
-  PARSE_READ(p, u8, (uint8_t*) &frame->body.block_placement.cursor_y);
-  PARSE_READ(p, u8, (uint8_t*) &frame->body.block_placement.cursor_z);
+  MC_BUFFER_READ(b, u32, (uint32_t*) &frame->body.block_placement.x);
+  MC_BUFFER_READ(b, u8, &frame->body.block_placement.y);
+  MC_BUFFER_READ(b, u32, (uint32_t*) &frame->body.block_placement.z);
+  MC_BUFFER_READ(b, u8, (uint8_t*) &frame->body.block_placement.direction);
+  MC_BUFFER_READ(b, slot, &frame->body.block_placement.held_item);
+  MC_BUFFER_READ(b, u8, (uint8_t*) &frame->body.block_placement.cursor_x);
+  MC_BUFFER_READ(b, u8, (uint8_t*) &frame->body.block_placement.cursor_y);
+  MC_BUFFER_READ(b, u8, (uint8_t*) &frame->body.block_placement.cursor_z);
 
   /* Validate cursor pos */
   if (frame->body.block_placement.cursor_x < 0 ||
@@ -440,118 +292,118 @@ int mc_parser__parse_block_placement(mc_parser_t* p, mc_frame_t* frame) {
     return -1;
   }
 
-  return p->offset;
+  return 0;
 }
 
 
-int mc_parser__parse_steer_vehicle(mc_parser_t* p, mc_frame_t* frame) {
-  if (p->len < 10)
-    return 0;
+int mc_parser__parse_steer_vehicle(mc_buffer_t* b, mc_frame_t* frame) {
+  if (b->len < 10)
+    return kMCBufferOOB;
 
-  PARSE_READ(p, float, &frame->body.steer_vehicle.sideways);
-  PARSE_READ(p, float, &frame->body.steer_vehicle.forward);
-  PARSE_READ(p, u8, &frame->body.steer_vehicle.jump);
-  PARSE_READ(p, u8, &frame->body.steer_vehicle.unmount);
+  MC_BUFFER_READ(b, float, &frame->body.steer_vehicle.sideways);
+  MC_BUFFER_READ(b, float, &frame->body.steer_vehicle.forward);
+  MC_BUFFER_READ(b, u8, &frame->body.steer_vehicle.jump);
+  MC_BUFFER_READ(b, u8, &frame->body.steer_vehicle.unmount);
 
-  return p->offset;
+  return 0;
 }
 
 
-int mc_parser__parse_click_window(mc_parser_t* p, mc_frame_t* frame) {
-  if (p->len < 7)
-    return 0;
+int mc_parser__parse_click_window(mc_buffer_t* b, mc_frame_t* frame) {
+  if (b->len < 7)
+    return kMCBufferOOB;
 
-  PARSE_READ(p, u8, (uint8_t*) &frame->body.click_window.window);
-  PARSE_READ(p, u16, &frame->body.click_window.slot);
-  PARSE_READ(p, u8, &frame->body.click_window.button);
-  PARSE_READ(p, u16, &frame->body.click_window.action_number);
-  PARSE_READ(p, u8, &frame->body.click_window.mode);
-  PARSE_READ(p, slot, &frame->body.click_window.clicked_item);
+  MC_BUFFER_READ(b, u8, (uint8_t*) &frame->body.click_window.window);
+  MC_BUFFER_READ(b, u16, &frame->body.click_window.slot);
+  MC_BUFFER_READ(b, u8, &frame->body.click_window.button);
+  MC_BUFFER_READ(b, u16, &frame->body.click_window.action_number);
+  MC_BUFFER_READ(b, u8, &frame->body.click_window.mode);
+  MC_BUFFER_READ(b, slot, &frame->body.click_window.clicked_item);
 
-  return p->offset;
+  return 0;
 }
 
 
-int mc_parser__parse_confirm_transaction(mc_parser_t* p, mc_frame_t* frame) {
-  if (p->len < 4)
-    return 0;
+int mc_parser__parse_confirm_transaction(mc_buffer_t* b, mc_frame_t* frame) {
+  if (b->len < 4)
+    return kMCBufferOOB;
 
-  PARSE_READ(p, u8, (uint8_t*) &frame->body.confirm_transaction.window);
-  PARSE_READ(p, u16, &frame->body.confirm_transaction.action_id);
-  PARSE_READ(p, u8, &frame->body.confirm_transaction.accepted);
+  MC_BUFFER_READ(b, u8, (uint8_t*) &frame->body.confirm_transaction.window);
+  MC_BUFFER_READ(b, u16, &frame->body.confirm_transaction.action_id);
+  MC_BUFFER_READ(b, u8, &frame->body.confirm_transaction.accepted);
 
-  return p->offset;
+  return 0;
 }
 
 
-int mc_parser__parse_update_sign(mc_parser_t* p, mc_frame_t* frame) {
-  if (p->len < 10)
-    return 0;
+int mc_parser__parse_update_sign(mc_buffer_t* b, mc_frame_t* frame) {
+  if (b->len < 10)
+    return kMCBufferOOB;
 
-  PARSE_READ(p, u32, (uint32_t*) &frame->body.update_sign.x);
-  PARSE_READ(p, u16, (uint16_t*) &frame->body.update_sign.y);
-  PARSE_READ(p, u32, (uint32_t*) &frame->body.update_sign.z);
-  PARSE_READ(p, string, &frame->body.update_sign.lines[0]);
-  PARSE_READ(p, string, &frame->body.update_sign.lines[1]);
-  PARSE_READ(p, string, &frame->body.update_sign.lines[2]);
-  PARSE_READ(p, string, &frame->body.update_sign.lines[3]);
+  MC_BUFFER_READ(b, u32, (uint32_t*) &frame->body.update_sign.x);
+  MC_BUFFER_READ(b, u16, (uint16_t*) &frame->body.update_sign.y);
+  MC_BUFFER_READ(b, u32, (uint32_t*) &frame->body.update_sign.z);
+  MC_BUFFER_READ(b, string, &frame->body.update_sign.lines[0]);
+  MC_BUFFER_READ(b, string, &frame->body.update_sign.lines[1]);
+  MC_BUFFER_READ(b, string, &frame->body.update_sign.lines[2]);
+  MC_BUFFER_READ(b, string, &frame->body.update_sign.lines[3]);
 
-  return p->offset;
+  return 0;
 }
 
 
-int mc_parser__parse_abilities(mc_parser_t* p, mc_frame_t* frame) {
-  if (p->len < 9)
-    return 0;
+int mc_parser__parse_abilities(mc_buffer_t* b, mc_frame_t* frame) {
+  if (b->len < 9)
+    return kMCBufferOOB;
 
-  PARSE_READ(p, u8, &frame->body.player_abilities.flags);
-  PARSE_READ(p, float, &frame->body.player_abilities.flying_speed);
-  PARSE_READ(p, float, &frame->body.player_abilities.walking_speed);
+  MC_BUFFER_READ(b, u8, &frame->body.player_abilities.flags);
+  MC_BUFFER_READ(b, float, &frame->body.player_abilities.flying_speed);
+  MC_BUFFER_READ(b, float, &frame->body.player_abilities.walking_speed);
 
-  return p->offset;
+  return 0;
 }
 
 
-int mc_parser__parse_settings(mc_parser_t* p, mc_frame_t* frame) {
-  if (p->len < 6)
-    return 0;
+int mc_parser__parse_settings(mc_buffer_t* b, mc_frame_t* frame) {
+  if (b->len < 6)
+    return kMCBufferOOB;
 
-  PARSE_READ(p, string, &frame->body.settings.locale);
-  PARSE_READ(p, u8, &frame->body.settings.view_distance);
-  PARSE_READ(p, u8, &frame->body.settings.chat_flags);
-  PARSE_READ(p, u8, &frame->body.settings.difficulty);
-  PARSE_READ(p, u8, &frame->body.settings.show_cape);
+  MC_BUFFER_READ(b, string, &frame->body.settings.locale);
+  MC_BUFFER_READ(b, u8, &frame->body.settings.view_distance);
+  MC_BUFFER_READ(b, u8, &frame->body.settings.chat_flags);
+  MC_BUFFER_READ(b, u8, &frame->body.settings.difficulty);
+  MC_BUFFER_READ(b, u8, &frame->body.settings.show_cape);
 
-  return p->offset;
+  return 0;
 }
 
 
-int mc_parser__parse_enc_resp(mc_parser_t* p, mc_frame_t* frame) {
-  if (p->len < 4)
-    return 0;
+int mc_parser__parse_enc_resp(mc_buffer_t* b, mc_frame_t* frame) {
+  if (b->len < 4)
+    return kMCBufferOOB;
 
-  PARSE_READ(p, u16, &frame->body.enc_resp.secret_len);
-  PARSE_READ_RAW(p,
-                 &frame->body.enc_resp.secret,
-                 frame->body.enc_resp.secret_len);
-  PARSE_READ(p, u16, &frame->body.enc_resp.token_len);
-  PARSE_READ_RAW(p,
-                 &frame->body.enc_resp.token,
-                 frame->body.enc_resp.token_len);
+  MC_BUFFER_READ(b, u16, &frame->body.enc_resp.secret_len);
+  MC_BUFFER_READ_DATA(b,
+                      &frame->body.enc_resp.secret,
+                      frame->body.enc_resp.secret_len);
+  MC_BUFFER_READ(b, u16, &frame->body.enc_resp.token_len);
+  MC_BUFFER_READ_DATA(b,
+                      &frame->body.enc_resp.token,
+                      frame->body.enc_resp.token_len);
 
-  return p->offset;
+  return 0;
 }
 
 
-int mc_parser__parse_plugin_msg(mc_parser_t* p, mc_frame_t* frame) {
-  if (p->len < 4)
-    return 0;
+int mc_parser__parse_plugin_msg(mc_buffer_t* b, mc_frame_t* frame) {
+  if (b->len < 4)
+    return kMCBufferOOB;
 
-  PARSE_READ(p, string, &frame->body.plugin_msg.channel);
-  PARSE_READ(p, u16, &frame->body.plugin_msg.msg_len);
-  PARSE_READ_RAW(p,
-                 &frame->body.plugin_msg.msg,
-                 frame->body.plugin_msg.msg_len);
+  MC_BUFFER_READ(b, string, &frame->body.plugin_msg.channel);
+  MC_BUFFER_READ(b, u16, &frame->body.plugin_msg.msg_len);
+  MC_BUFFER_READ_DATA(b,
+                      &frame->body.plugin_msg.msg,
+                      frame->body.plugin_msg.msg_len);
 
-  return p->offset;
+  return 0;
 }

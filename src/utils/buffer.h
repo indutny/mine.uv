@@ -1,7 +1,8 @@
 #ifndef SRC_UTILS_BUFFER_H_
 #define SRC_UTILS_BUFFER_H_
 
-#include "common.h"  /* mc_string_t */
+#include "utils/common.h"  /* mc_slot_t */
+#include "utils/string.h"  /* mc_string_t */
 
 #define MC_BUFFER_WRAP(expr) \
     do { \
@@ -34,16 +35,18 @@ struct mc_buffer_s {
 };
 
 enum mc_buffer_err_e {
-  kMCBufferNoMem = -1,
-  kMCBufferOOB = -2
+  kMCBufferUnknown = -1,
+  kMCBufferNoMem = -2,
+  kMCBufferOOB = -3
 };
 
 int mc_buffer_init(mc_buffer_t* buffer, int capacity);
-void mc_buffer_from_buffer(mc_buffer_t* buffer, unsigned char* data, int len);
+void mc_buffer_from_data(mc_buffer_t* buffer, unsigned char* data, int len);
 void mc_buffer_reset(mc_buffer_t* buffer);
 void mc_buffer_destroy(mc_buffer_t* buffer);
 
 unsigned char* mc_buffer_data(mc_buffer_t* buffer);
+int mc_buffer_offset(mc_buffer_t* buffer);
 int mc_buffer_len(mc_buffer_t* buffer);
 void mc_buffer_replace(mc_buffer_t* buffer, unsigned char* out, int len);
 
@@ -70,6 +73,10 @@ int mc_buffer_read_i8(mc_buffer_t* buffer, int8_t* value);
 int mc_buffer_read_i16(mc_buffer_t* buffer, int16_t* value);
 int mc_buffer_read_i32(mc_buffer_t* buffer, int32_t* value);
 int mc_buffer_read_i64(mc_buffer_t* buffer, int64_t* value);
-int mc_buffer_read_data(mc_buffer_t* buffer, void* data, int len);
+int mc_buffer_read_float(mc_buffer_t* buffer, float* value);
+int mc_buffer_read_double(mc_buffer_t* buffer, double* value);
+int mc_buffer_read_data(mc_buffer_t* buffer, unsigned char** data, int len);
+int mc_buffer_read_string(mc_buffer_t* buffer, mc_string_t* str);
+int mc_buffer_read_slot(mc_buffer_t* buffer, mc_slot_t* slot);
 
 #endif  /* SRC_UTILS_BUFFER_H_ */

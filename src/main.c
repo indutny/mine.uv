@@ -3,7 +3,6 @@
 
 #include "openssl/crypto.h"
 #include "server.h"
-#include "nbt.h"
 
 int main() {
   int r;

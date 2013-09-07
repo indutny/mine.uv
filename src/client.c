@@ -10,6 +10,7 @@
 #include "protocol/framer.h"  /* mc_framer_t */
 #include "protocol/parser.h"  /* mc_parser_execute */
 #include "server.h"  /* mc_server_t */
+#include "utils/buffer.h"  /* kMCBufferOOB */
 #include "utils/string.h"  /* mc_string_t */
 #include "utils/common-private.h"  /* container_of */
 
@@ -308,6 +309,10 @@ void mc_client__cycle(mc_client_t* client) {
      */
     offset = mc_parser_execute(data, len, &frame);
 
+    /* Not enough data yet */
+    if (offset == kMCBufferOOB)
+      break;
+
     /* Parse error */
     if (offset < 0) {
       char err[128];
@@ -318,10 +323,6 @@ void mc_client__cycle(mc_client_t* client) {
         return mc_client_destroy(client, "Frame OOB");
       }
     }
-
-    /* Not enough data yet */
-    if (offset == 0)
-      break;
 
     r = mc_client__restart_timer(client);
     if (r != 0)
