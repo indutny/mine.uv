@@ -30,6 +30,9 @@
         return r; \
     } while (0)
 
+#define NBT_OPT_SET(obj, prop, type, value) \
+    mc_nbt_set((obj), (prop), sizeof((prop)) - 1, (type), (value));
+
 #define NBT_CREATE(out, type, name, arg) \
     do { \
       (out) = mc_nbt_create_##type((name), sizeof((name)) - 1, (arg)); \
@@ -146,8 +149,8 @@ mc_nbt_t* mc_nbt_get(mc_nbt_t* obj,
 int mc_nbt_set(mc_nbt_t* obj,
                const char* prop,
                int len,
-               mc_nbt_t* val,
-               mc_nbt_type_t type);
+               mc_nbt_type_t type,
+               void* val);
 int mc_nbt_read(mc_nbt_t* obj,
                 const char* prop,
                 int len,

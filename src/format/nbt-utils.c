@@ -44,15 +44,37 @@ mc_nbt_t* mc_nbt_get(mc_nbt_t* obj,
 int mc_nbt_set(mc_nbt_t* obj,
                const char* prop,
                int len,
-               mc_nbt_t* val,
-               mc_nbt_type_t type) {
-  mc_nbt_t** slot;
+               mc_nbt_type_t type,
+               void* val) {
+  mc_nbt_t* r;
 
-  slot = mc_nbt_find(obj, prop, len, type);
-  if (slot == NULL)
+  r = mc_nbt_get(obj, prop, len, type);
+  if (r == NULL)
     return -1;
 
-  *slot = val;
+  switch (type) {
+    case kNBTByte:
+      r->value.i8 = *(int8_t*) val;
+      break;
+    case kNBTShort:
+      r->value.i16 = *(int16_t*) val;
+      break;
+    case kNBTInt:
+      r->value.i32 = *(int32_t*) val;
+      break;
+    case kNBTLong:
+      r->value.i64 = *(int64_t*) val;
+      break;
+    case kNBTFloat:
+      r->value.f32 = *(float*) val;
+      break;
+    case kNBTDouble:
+      r->value.f64 = *(double*) val;
+      break;
+    default:
+      /* Not supported */
+      return - 1;
+  }
   return 0;
 }
 

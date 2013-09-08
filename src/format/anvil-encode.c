@@ -136,8 +136,10 @@ mc_nbt_t* mc_anvil__encode_column(mc_column_t* col) {
   level->value.values.list[8] = entities;
   for (i = 0; i < col->entity_count; i++) {
     r = mc_anvil__update_entity(&col->entities[i]);
-    if (r != 0)
+    if (r != 0) {
+      r = mc_anvil__update_entity(&col->entities[i]);
       goto nbt_fatal;
+    }
 
     entities->value.values.list[i] = col->entities[i].nbt;
   }
@@ -225,8 +227,43 @@ nbt_fatal:
 
 
 static int mc_anvil__update_entity(mc_entity_t* entity) {
+  mc_nbt_t* pos;
+  mc_nbt_t* motion;
+  mc_nbt_t* rotation;
+
   if (entity->nbt == NULL)
     return -1;
+
+  NBT_OPT_SET(entity->nbt, "OnGround", kNBTByte, &entity->on_ground);
+  NBT_OPT_SET(entity->nbt, "Invulnerable", kNBTByte, &entity->invulnerable);
+  NBT_OPT_SET(entity->nbt, "Air", kNBTShort, &entity->air);
+  NBT_OPT_SET(entity->nbt, "Fire", kNBTShort, &entity->fire);
+  NBT_OPT_SET(entity->nbt, "Health", kNBTShort, &entity->health);
+  NBT_OPT_SET(entity->nbt, "FallDistance", kNBTFloat, &entity->fall_distance);
+
+  pos = NBT_GET(entity->nbt, "Pos", kNBTList);
+  motion = NBT_GET(entity->nbt, "Motion", kNBTList);
+  rotation = NBT_GET(entity->nbt, "Rotation", kNBTList);
+  if (pos == NULL || motion == NULL || rotation == NULL)
+    return -1;
+
+  if (pos->value.values.len != 3 ||
+      pos->value.values.list[0]->type != kNBTDouble ||
+      motion->value.values.len != 3 ||
+      motion->value.values.list[0]->type != kNBTDouble ||
+      rotation->value.values.len != 2 ||
+      rotation->value.values.list[0]->type != kNBTFloat) {
+    return -1;
+  }
+
+  pos->value.values.list[0]->value.f64 = entity->pos_x;
+  pos->value.values.list[1]->value.f64 = entity->pos_y;
+  pos->value.values.list[2]->value.f64 = entity->pos_z;
+  motion->value.values.list[0]->value.f64 = entity->motion_x;
+  motion->value.values.list[1]->value.f64 = entity->motion_y;
+  motion->value.values.list[2]->value.f64 = entity->motion_z;
+  rotation->value.values.list[0]->value.f32 = entity->yaw;
+  rotation->value.values.list[1]->value.f32 = entity->pitch;
 
   return 0;
 }
