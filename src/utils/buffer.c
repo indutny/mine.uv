@@ -23,7 +23,7 @@
 static int mc_buffer__check_grow(mc_buffer_t* buffer, int size);
 
 static const int kDefaultCapacity = 256;
-static const int kCapacityIncrement = 1024;
+static const int kCapacityIncrement = 16384;
 
 
 int mc_buffer_init(mc_buffer_t* buffer, int capacity) {
