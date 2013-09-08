@@ -22,7 +22,7 @@ int mc_nbt__zlib(const unsigned char* data,
     r = inflateInit2(&stream, comp == kNBTGZip ? kGZipBits : kDeflateBits);
   } else {
     r = deflateInit2(&stream,
-                     Z_DEFAULT_COMPRESSION,
+                     3,
                      Z_DEFLATED,
                      comp == kNBTGZip ? kGZipBits : kDeflateBits,
                      8,
