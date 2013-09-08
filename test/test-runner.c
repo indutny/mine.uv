@@ -120,6 +120,7 @@ void test_anvil() {
   r = mc_anvil_parse(out, len, &reg);
   free(out);
   ASSERT(r == 0, "Anvil parse#2 failed");
+  mc_region_destroy(reg);
 }
 
 
