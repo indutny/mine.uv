@@ -64,8 +64,8 @@ int mc_anvil__encode(mc_buffer_t* b, mc_region_t* reg) {
     return header;
 
   /* Translate every column to NBT first */
-  for (x = 0; x < kMCColumnMaxX; x++) {
-    for (z = 0; z < kMCColumnMaxZ; z++) {
+  for (z = 0; z < kMCColumnMaxZ; z++) {
+    for (x = 0; x < kMCColumnMaxX; x++) {
       if (!reg->columns[x][z].generated)
         continue;
 
@@ -182,12 +182,12 @@ mc_nbt_t* mc_anvil__encode_column(mc_column_t* col, int col_x, int col_z) {
   level->value.values.list[8] = entities;
   for (i = 0; i < col->entity_count; i++) {
     r = mc_anvil__update_entity(&col->entities[i]);
-    if (r != 0) {
-      r = mc_anvil__update_entity(&col->entities[i]);
+    if (r != 0)
       goto nbt_fatal;
-    }
 
-    entities->value.values.list[i] = col->entities[i].nbt;
+    entities->value.values.list[i] = mc_nbt_clone(col->entities[i].nbt);
+    if (entities->value.values.list[i] == NULL)
+      goto nbt_fatal;
   }
 
   /* Put tiles */
@@ -312,6 +312,10 @@ int mc_anvil__encode_tiles(mc_chunk_t* chunk,
         NBT_SET(tile_data, "x", kNBTInt, &glob_x);
         NBT_SET(tile_data, "y", kNBTInt, &glob_y);
         NBT_SET(tile_data, "z", kNBTInt, &glob_z);
+
+        tile_data = mc_nbt_clone(tile_data);
+        if (tile_data == NULL)
+          return -1;
 
         **out = tile_data;
         *out = *out + 1;
