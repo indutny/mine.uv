@@ -81,6 +81,19 @@ void mc_buffer_replace(mc_buffer_t* buffer, unsigned char* out, int len) {
 }
 
 
+int mc_buffer_reserve(mc_buffer_t* buffer, int size) {
+  GROW(buffer, size);
+  memset(WRITE_PTR(buffer, void), 0, size);
+  buffer->len += size;
+  return buffer->len - size;
+}
+
+
+unsigned char* mc_buffer_reserve_ptr(mc_buffer_t* buffer, int reserve_off) {
+  return buffer->data + reserve_off;
+}
+
+
 int mc_buffer_write_u8(mc_buffer_t* buffer, uint8_t value) {
   GROW(buffer, 1);
   *WRITE_PTR(buffer, uint8_t) = value;

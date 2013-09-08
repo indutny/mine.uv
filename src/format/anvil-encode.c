@@ -1,3 +1,4 @@
+#include <stdlib.h>  /* free, NULL */
 #include <string.h>  /* memset */
 
 #include "format/anvil.h"
@@ -20,6 +21,8 @@ static int mc_anvil__encode_tiles(mc_chunk_t* chunk,
                                   mc_nbt_t** out);
 static int mc_anvil__update_entity(mc_entity_t* entity);
 
+static const int kBlockSize = 4096;
+
 int mc_anvil_encode(mc_region_t* reg, unsigned char** out) {
   int r;
   mc_buffer_t buf;
@@ -40,11 +43,24 @@ int mc_anvil_encode(mc_region_t* reg, unsigned char** out) {
 
 
 int mc_anvil__encode(mc_buffer_t* b, mc_region_t* reg) {
+  int r;
+  int header;
   int x;
   int z;
-  mc_nbt_t* columns[MC_COLUMN_MAX_X][MC_COLUMN_MAX_Z];
+  int off;
+  int len;
+  mc_nbt_t* col;
+  unsigned char* out;
+  uint32_t* header_ptr;
 
-  memset(columns, 0, MC_COLUMN_MAX_X * MC_COLUMN_MAX_Z * sizeof(**columns));
+  /* Reserve space for headers */
+  header = mc_buffer_reserve(b,
+                             MC_COLUMN_MAX_X *
+                                MC_COLUMN_MAX_Z *
+                                sizeof(int32_t) *
+                                2);
+  if (header < 0)
+    return header;
 
   /* Translate every column to NBT first */
   for (x = 0; x < kMCColumnMaxX; x++) {
@@ -52,21 +68,35 @@ int mc_anvil__encode(mc_buffer_t* b, mc_region_t* reg) {
       if (!reg->columns[x][z].generated)
         continue;
 
-      columns[x][z] = mc_anvil__encode_column(&reg->columns[x][z], x, z);
-      if (columns[x][z] == NULL)
-        goto fatal;
+      col = mc_anvil__encode_column(&reg->columns[x][z], x, z);
+      if (col == NULL)
+        return -1;
+
+      len = mc_nbt_encode(col, kNBTGZip, &out);
+      mc_nbt_destroy(col);
+      if (len < 0)
+        return r;
+
+      off = mc_buffer_len(b);
+      r = mc_buffer_write_data(b, out, len);
+      free(out);
+      if (r != 0)
+        return r;
+
+      /* Padd chunk data */
+      if (len % kBlockSize != 0) {
+        r = mc_buffer_reserve(b, len % kBlockSize);
+        if (r != 0)
+          return r;
+      }
+
+      /* Insert offset into headers */
+      header_ptr = (uint32_t*) mc_buffer_reserve_ptr(b, header);
+      *(header_ptr + x + z * kMCColumnMaxX) = off;
     }
   }
 
   return 0;
-
-fatal:
-  for (x = 0; x < kMCColumnMaxX; x++)
-    for (z = 0; z < kMCColumnMaxZ; z++)
-      if (columns[x][z] != NULL)
-        mc_nbt_destroy(columns[x][z]);
-
-  return -1;
 }
 
 

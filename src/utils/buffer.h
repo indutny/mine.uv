@@ -49,6 +49,8 @@ unsigned char* mc_buffer_data(mc_buffer_t* buffer);
 int mc_buffer_offset(mc_buffer_t* buffer);
 int mc_buffer_len(mc_buffer_t* buffer);
 void mc_buffer_replace(mc_buffer_t* buffer, unsigned char* out, int len);
+int mc_buffer_reserve(mc_buffer_t* buffer, int size);
+unsigned char* mc_buffer_reserve_ptr(mc_buffer_t* buffer, int reserve_off);
 
 /* Write interface */
 
