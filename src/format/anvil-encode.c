@@ -18,7 +18,7 @@ static int mc_anvil__encode_tiles(mc_chunk_t* chunk,
                                   int x_off,
                                   int y_off,
                                   int z_off,
-                                  mc_nbt_t** out);
+                                  mc_nbt_t*** out);
 static int mc_anvil__update_entity(mc_entity_t* entity);
 
 static const int kBlockSize = 4096;
@@ -117,7 +117,7 @@ mc_nbt_t* mc_anvil__encode_column(mc_column_t* col, int col_x, int col_z) {
   mc_nbt_t* chunk;
   mc_nbt_t* entities;
   mc_nbt_t* tiles;
-  mc_nbt_t* last_tile;
+  mc_nbt_t** last_tile;
 
   NBT_CREATE(res, compound, "", 1);
   NBT_CREATE(level, compound, "Level", 10);
@@ -185,7 +185,7 @@ mc_nbt_t* mc_anvil__encode_column(mc_column_t* col, int col_x, int col_z) {
   /* Put tiles */
   NBT_CREATE(tiles, compound, "TileEntities", tile_count);
   level->value.values.list[9] = tiles;
-  last_tile = (mc_nbt_t*) tiles->value.values.list;
+  last_tile = tiles->value.values.list;
 
   for (y = 0; y < kMCChunkMaxY; y++) {
     if (col->chunks[y] == NULL)
@@ -281,7 +281,7 @@ int mc_anvil__encode_tiles(mc_chunk_t* chunk,
                            int x_off,
                            int y_off,
                            int z_off,
-                           mc_nbt_t** out) {
+                           mc_nbt_t*** out) {
   int x;
   int y;
   int z;
@@ -305,7 +305,7 @@ int mc_anvil__encode_tiles(mc_chunk_t* chunk,
         NBT_SET(tile_data, "y", kNBTInt, &glob_y);
         NBT_SET(tile_data, "z", kNBTInt, &glob_z);
 
-        *out = tile_data;
+        **out = tile_data;
         *out = *out + 1;
       }
     }

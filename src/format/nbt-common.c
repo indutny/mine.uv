@@ -48,7 +48,7 @@ int mc_nbt__zlib(const unsigned char* data,
       r = inflate(&stream, stream.avail_in == 0 ? Z_FINISH : Z_SYNC_FLUSH);
     else
       r = deflate(&stream, stream.avail_in == 0 ? Z_FINISH : Z_SYNC_FLUSH);
- 
+
     if (r == Z_STREAM_END)
       break;
 
