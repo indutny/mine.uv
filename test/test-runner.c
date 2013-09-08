@@ -114,6 +114,7 @@ void test_anvil() {
   len = mc_anvil_encode(reg, &out);
   ASSERT(len > 0, "Encode failed");
 
+  free(out);
   mc_region_destroy(reg);
 }
 
