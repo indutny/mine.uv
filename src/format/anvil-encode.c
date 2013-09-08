@@ -1,3 +1,4 @@
+#include <assert.h>  /* assert */
 #include <stdlib.h>  /* free, NULL */
 #include <string.h>  /* memset */
 
@@ -78,17 +79,24 @@ int mc_anvil__encode(mc_buffer_t* b, mc_region_t* reg) {
         return r;
 
       off = mc_buffer_len(b);
-      r = mc_buffer_write_data(b, out, len);
+
+      r = mc_buffer_write_i32(b, len);
+      if (r == 0)
+        r = mc_buffer_write_i8(b, 1);
+      if (r == 0)
+        r = mc_buffer_write_data(b, out, len);
       free(out);
       if (r != 0)
         return r;
 
       /* Padd chunk data */
-      if (len % kBlockSize != 0) {
-        r = mc_buffer_reserve(b, kBlockSize - (len % kBlockSize));
+      if ((len + 5) % kBlockSize != 0) {
+        r = mc_buffer_reserve(b, kBlockSize - ((len + 5) % kBlockSize));
         if (r < 0)
           return r;
       }
+
+      assert(off % kBlockSize == 0);
 
       /* Insert offset into headers */
       header_ptr = (uint32_t*) mc_buffer_reserve_ptr(b, header);
