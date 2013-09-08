@@ -27,7 +27,7 @@ int mc_anvil_encode(mc_region_t* reg, unsigned char** out) {
   int r;
   mc_buffer_t buf;
 
-  r = mc_buffer_init(&buf, 0);
+  r = mc_buffer_init(&buf, kBlockSize * (kMCColumnMaxX * kMCColumnMaxZ + 3));
   if (r != 0)
     return r;
 
