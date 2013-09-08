@@ -55,8 +55,6 @@ int mc_nbt__encode(mc_buffer_t* buffer, int with_name, mc_nbt_t* val) {
     MC_BUFFER_WRITE(buffer, u8, tag);
     MC_BUFFER_WRITE(buffer, i16, val->name.len);
     MC_BUFFER_WRITE_DATA(buffer, val->name.value, val->name.len);
-  } else {
-    MC_BUFFER_WRITE(buffer, u8, tag);
   }
 
   return mc_nbt__encode_payload(buffer, val);

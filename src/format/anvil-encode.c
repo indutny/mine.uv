@@ -1,3 +1,4 @@
+#include <arpa/inet.h>  /* ntohl */
 #include <assert.h>  /* assert */
 #include <stdlib.h>  /* free, NULL */
 #include <string.h>  /* memset */
@@ -101,7 +102,7 @@ int mc_anvil__encode(mc_buffer_t* b, mc_region_t* reg) {
 
       /* Insert offset into headers */
       header_ptr = (uint32_t*) mc_buffer_reserve_ptr(b, header);
-      *(header_ptr + x + z * kMCColumnMaxX) = off / kBlockSize;
+      *(header_ptr + x + z * kMCColumnMaxX) = htonl((off << 8) / kBlockSize);
     }
   }
 
@@ -162,7 +163,7 @@ mc_nbt_t* mc_anvil__encode_column(mc_column_t* col, int col_x, int col_z) {
     if (col->chunks[y] != NULL)
       chunk_count++;
 
-  NBT_CREATE(chunks, compound, "Sections", chunk_count);
+  NBT_CREATE(chunks, list, "Sections", chunk_count);
   level->value.values.list[7] = chunks;
 
   /* Put chunks and count tiles */
@@ -179,7 +180,7 @@ mc_nbt_t* mc_anvil__encode_column(mc_column_t* col, int col_x, int col_z) {
   }
 
   /* Put entities */
-  NBT_CREATE(entities, compound, "Entities", col->entity_count);
+  NBT_CREATE(entities, list, "Entities", col->entity_count);
   level->value.values.list[8] = entities;
   for (i = 0; i < col->entity_count; i++) {
     r = mc_anvil__update_entity(&col->entities[i]);
@@ -192,7 +193,7 @@ mc_nbt_t* mc_anvil__encode_column(mc_column_t* col, int col_x, int col_z) {
   }
 
   /* Put tiles */
-  NBT_CREATE(tiles, compound, "TileEntities", tile_count);
+  NBT_CREATE(tiles, list, "TileEntities", tile_count);
   level->value.values.list[9] = tiles;
   last_tile = tiles->value.values.list;
 

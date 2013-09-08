@@ -65,7 +65,7 @@ int mc_anvil_parse(const unsigned char* data, int len, mc_region_t** out) {
 
       nbt = mc_nbt_preparse(&nbt_parser,
                             data + offset + 5,
-                            body_len - 1,
+                            body_len,
                             comp == 1 ? kNBTGZip : kNBTDeflate,
                             kSameLifetime);
       if (nbt == NULL)

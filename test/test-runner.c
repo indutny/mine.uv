@@ -113,9 +113,13 @@ void test_anvil() {
 
   len = mc_anvil_encode(reg, &out);
   ASSERT(len > 0, "Encode failed");
-
-  free(out);
   mc_region_destroy(reg);
+
+  /* And try to parse it again */
+
+  r = mc_anvil_parse(out, len, &reg);
+  free(out);
+  ASSERT(r == 0, "Anvil parse#2 failed");
 }
 
 
