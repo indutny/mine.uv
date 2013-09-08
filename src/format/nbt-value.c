@@ -130,7 +130,8 @@ void mc_nbt_destroy(mc_nbt_t* val) {
   int32_t i;
   if (val->type == kNBTList || val->type == kNBTCompound)
     for (i = 0; i < val->value.values.len; i++)
-      mc_nbt_destroy(val->value.values.list[i]);
+      if (val->value.values.list[i] != NULL)
+        mc_nbt_destroy(val->value.values.list[i]);
   free(val);
 }
 
@@ -158,14 +159,18 @@ mc_nbt_t* mc_nbt__create_vl(mc_nbt_type_t type,
                             const char* name,
                             int name_len,
                             int len) {
+  int i;
   mc_nbt_t* res;
 
   res = mc_nbt__create(name,
                        name_len,
                        type,
                        sizeof(*res->value.values.list) * (len - 1));
-  if (res != NULL)
+  if (res != NULL) {
+    for (i = 0; i < len; i++)
+      res->value.values.list[i] = NULL;
     res->value.values.len = len;
+  }
 
   return res;
 }

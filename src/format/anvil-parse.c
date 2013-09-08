@@ -73,7 +73,7 @@ int mc_anvil_parse(const unsigned char* data, int len, mc_region_t** out) {
 
       body_len = ntohl(*(int32_t*) (data + offset));
       comp = data[offset + 4];
-      col = &res->column[x][z];
+      col = &res->columns[x][z];
 
       /* Not generated yet */
       if (body_len < 0)
@@ -150,6 +150,8 @@ int mc_anvil__parse_column(mc_nbt_t* nbt, mc_column_t* col) {
   r = mc_anvil__parse_height_map(level, col);
   if (r != 0)
     return -1;
+
+  col->generated = 1;
 
   return 0;
 }

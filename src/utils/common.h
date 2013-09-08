@@ -83,19 +83,19 @@ typedef struct mc_chunk_s mc_chunk_t;
 typedef struct mc_block_s mc_block_t;
 typedef struct mc_entity_s mc_entity_t;
 
-#define MC__COLUMN_MAX_X 32
-#define MC__COLUMN_MAX_Z 32
-#define MC__COLUMN_MAX_Y 16
-#define MC__CHUNK_MAX_X 16
-#define MC__CHUNK_MAX_Z 16
-#define MC__CHUNK_MAX_Y 16
+#define MC_COLUMN_MAX_X 32
+#define MC_COLUMN_MAX_Z 32
+#define MC_COLUMN_MAX_Y 16
+#define MC_CHUNK_MAX_X 16
+#define MC_CHUNK_MAX_Z 16
+#define MC_CHUNK_MAX_Y 16
 
-static const int kMCColumnMaxX = MC__COLUMN_MAX_X;
-static const int kMCColumnMaxZ = MC__COLUMN_MAX_Z;
-static const int kMCColumnMaxY = MC__COLUMN_MAX_Y;
-static const int kMCChunkMaxX = MC__CHUNK_MAX_X;
-static const int kMCChunkMaxZ = MC__CHUNK_MAX_Z;
-static const int kMCChunkMaxY = MC__CHUNK_MAX_Y;
+static const int kMCColumnMaxX = MC_COLUMN_MAX_X;
+static const int kMCColumnMaxZ = MC_COLUMN_MAX_Z;
+static const int kMCColumnMaxY = MC_COLUMN_MAX_Y;
+static const int kMCChunkMaxX = MC_CHUNK_MAX_X;
+static const int kMCChunkMaxZ = MC_CHUNK_MAX_Z;
+static const int kMCChunkMaxY = MC_CHUNK_MAX_Y;
 static const int kMCMaxHeldSlot = 8;
 static const int kMCMaxInventorySlot = 44;
 
@@ -466,25 +466,26 @@ struct mc_entity_s {
 };
 
 struct mc_chunk_s {
-  mc_block_t blocks[MC__CHUNK_MAX_X][MC__CHUNK_MAX_Z][MC__CHUNK_MAX_Y];
+  mc_block_t blocks[MC_CHUNK_MAX_X][MC_CHUNK_MAX_Z][MC_CHUNK_MAX_Y];
 };
 
 struct mc_column_s {
+  int generated;
   int8_t populated;
   int32_t world_x;
   int32_t world_z;
   int64_t last_update;
   int64_t inhabited_time;
 
-  mc_biome_t biomes[MC__CHUNK_MAX_X][MC__CHUNK_MAX_Z];
-  int32_t height_map[MC__CHUNK_MAX_X][MC__CHUNK_MAX_Z];
-  mc_chunk_t* chunks[MC__COLUMN_MAX_Y];
+  mc_biome_t biomes[MC_CHUNK_MAX_X][MC_CHUNK_MAX_Z];
+  int32_t height_map[MC_CHUNK_MAX_X][MC_CHUNK_MAX_Z];
+  mc_chunk_t* chunks[MC_COLUMN_MAX_Y];
   mc_entity_t* entities;
   int entity_count;
 };
 
 struct mc_region_s {
-  mc_column_t column[MC__COLUMN_MAX_X][MC__COLUMN_MAX_Z];
+  mc_column_t columns[MC_COLUMN_MAX_X][MC_COLUMN_MAX_Z];
 };
 
 struct mc_frame_s {
@@ -654,12 +655,5 @@ int mc_write_file(const char* path,
                   const unsigned char* out,
                   int len,
                   int update);
-
-#undef MC__COLUMN_MAX_X
-#undef MC__COLUMN_MAX_Z
-#undef MC__COLUMN_MAX_Y
-#undef MC__CHUNK_MAX_X
-#undef MC__CHUNK_MAX_Z
-#undef MC__CHUNK_MAX_Y
 
 #endif  /* SRC_UTILS_COMMON_H_ */

@@ -108,7 +108,12 @@ void test_anvil() {
   ASSERT(len > 0, "Read file failed");
 
   r = mc_anvil_parse(out, len, &reg);
+  free(out);
   ASSERT(r == 0, "Anvil parse failed");
+
+  len = mc_anvil_encode(reg, &out);
+  ASSERT(len > 0, "Encode failed");
+
   mc_region_destroy(reg);
 }
 

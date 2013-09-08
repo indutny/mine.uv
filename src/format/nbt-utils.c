@@ -3,31 +3,61 @@
 
 #include "format/nbt.h"
 
-mc_nbt_t* mc_nbt_get(mc_nbt_t* val,
-                     const char* prop,
-                     int len,
-                     mc_nbt_type_t type) {
+mc_nbt_t** mc_nbt_find(mc_nbt_t* obj,
+                       const char* prop,
+                       int len,
+                       mc_nbt_type_t type) {
   int i;
   mc_nbt_t* item;
-  if (val->type != kNBTCompound)
+  if (obj->type != kNBTCompound)
     return NULL;
 
-  for (i = 0; i < val->value.values.len;i++) {
-    item = val->value.values.list[i];
+  for (i = 0; i < obj->value.values.len;i++) {
+    item = obj->value.values.list[i];
     if (item->name.len != len ||
         strncmp(item->name.value, prop, len) != 0) {
       continue;
     }
     if (item->type != type)
       return NULL;
-    return item;
+    return &obj->value.values.list[i];
   }
 
   return NULL;
 }
 
 
-int mc_nbt_read(mc_nbt_t* val,
+mc_nbt_t* mc_nbt_get(mc_nbt_t* obj,
+                     const char* prop,
+                     int len,
+                     mc_nbt_type_t type) {
+  mc_nbt_t** slot;
+
+  slot = mc_nbt_find(obj, prop, len, type);
+  if (slot == NULL)
+    return NULL;
+
+  return *slot;
+}
+
+
+int mc_nbt_set(mc_nbt_t* obj,
+               const char* prop,
+               int len,
+               mc_nbt_t* val,
+               mc_nbt_type_t type) {
+  mc_nbt_t** slot;
+
+  slot = mc_nbt_find(obj, prop, len, type);
+  if (slot == NULL)
+    return -1;
+
+  *slot = val;
+  return 0;
+}
+
+
+int mc_nbt_read(mc_nbt_t* obj,
                 const char* prop,
                 int len,
                 mc_nbt_type_t type,
@@ -36,7 +66,7 @@ int mc_nbt_read(mc_nbt_t* val,
   int byte_size;
   unsigned char* tmp;
 
-  r = mc_nbt_get(val, prop, len, type);
+  r = mc_nbt_get(obj, prop, len, type);
   if (r == NULL)
     return -1;
   switch (type) {

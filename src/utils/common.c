@@ -26,7 +26,7 @@ void mc_region_destroy(mc_region_t* region) {
 
   for (x = 0; x < kMCColumnMaxX; x++) {
     for (z = 0; z < kMCColumnMaxZ; z++) {
-      col = &region->column[x][z];
+      col = &region->columns[x][z];
 
       /* Free chunks */
       for (y = 0; y < kMCColumnMaxY; y++) {
