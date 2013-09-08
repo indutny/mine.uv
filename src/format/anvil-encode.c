@@ -5,21 +5,6 @@
 #include "utils/buffer.h"  /* mc_buffer_t */
 #include "utils/common.h"  /* mc_region_t */
 
-#define NBT_SET(obj, prop, type, value) \
-    do { \
-      int r; \
-      r = mc_nbt_set((obj), (prop), sizeof((prop)) - 1, (type), (value)); \
-      if (r != 0) \
-        return r; \
-    } while (0)
-
-#define NBT_CREATE(out, type, name, arg) \
-    do { \
-      (out) = mc_nbt_create_##type((name), sizeof((name)) - 1, (arg)); \
-      if ((out) == NULL) \
-        goto nbt_fatal; \
-    } while (0)
-
 
 static int mc_anvil__encode(mc_buffer_t* b, mc_region_t* reg);
 static mc_nbt_t* mc_anvil__encode_column(mc_column_t* col);

@@ -3,6 +3,40 @@
 
 #include <stdint.h>  /* uint8_t, and friends */
 
+#define NBT_GET(obj, prop, type) \
+    mc_nbt_get((obj), (prop), sizeof((prop)) - 1, (type))
+
+#define NBT_READ(obj, prop, type, to) \
+    do { \
+      int r; \
+      r = mc_nbt_read((obj), (prop), sizeof((prop)) - 1, (type), (to)); \
+      if (r != 0) \
+        return r; \
+    } while (0)
+
+#define NBT_OPT_READ(obj, prop, type, to, def) \
+    do { \
+      int r; \
+      r = mc_nbt_read((obj), (prop), sizeof((prop)) - 1, (type), (to)); \
+      if (r != 0) \
+        *(to) = def; \
+    } while (0)
+
+#define NBT_SET(obj, prop, type, value) \
+    do { \
+      int r; \
+      r = mc_nbt_set((obj), (prop), sizeof((prop)) - 1, (type), (value)); \
+      if (r != 0) \
+        return r; \
+    } while (0)
+
+#define NBT_CREATE(out, type, name, arg) \
+    do { \
+      (out) = mc_nbt_create_##type((name), sizeof((name)) - 1, (arg)); \
+      if ((out) == NULL) \
+        goto nbt_fatal; \
+    } while (0)
+
 typedef struct mc_nbt_s mc_nbt_t;
 typedef struct mc_nbt_parser_s mc_nbt_parser_t;
 typedef enum mc_nbt_type_e mc_nbt_type_t;

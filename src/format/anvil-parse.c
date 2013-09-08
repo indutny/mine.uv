@@ -18,25 +18,6 @@ static int mc_anvil__parse_height_map(mc_nbt_t* nbt, mc_column_t* col);
 static const int kHeaderSize = 1024;  /* 32 * 32 */
 static const int kSectorSize = 4096;
 
-#define NBT_GET(obj, prop, type) \
-    mc_nbt_get((obj), (prop), sizeof((prop)) - 1, (type))
-
-#define NBT_READ(obj, prop, type, to) \
-    do { \
-      int r; \
-      r = mc_nbt_read((obj), (prop), sizeof((prop)) - 1, (type), (to)); \
-      if (r != 0) \
-        return r; \
-    } while (0)
-
-#define NBT_OPT_READ(obj, prop, type, to, def) \
-    do { \
-      int r; \
-      r = mc_nbt_read((obj), (prop), sizeof((prop)) - 1, (type), (to)); \
-      if (r != 0) \
-        *(to) = def; \
-    } while (0)
-
 int mc_anvil_parse(const unsigned char* data, int len, mc_region_t** out) {
   int r;
   mc_nbt_parser_t nbt_parser;
