@@ -170,7 +170,15 @@ mc_nbt_t* mc_nbt_clone(const mc_nbt_t* val) {
       break;
     default:
       /* Copy all primitive data */
-      memcpy(res, val, sizeof(*res) + additional_size);
+      memcpy(res, val, sizeof(*res));
+
+      /* Copy byte array */
+      if (val->type == kNBTByteArray ||
+          val->type == kNBTString ||
+          val->type == kNBTIntArray) {
+        res->value.i8l.list = (int8_t*) res + sizeof(*res);
+        memcpy(res->value.i8l.list, val->value.i8l.list, additional_size);
+      }
       break;
   }
 
