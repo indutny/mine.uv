@@ -92,7 +92,7 @@ int mc_anvil__encode(mc_buffer_t* b, mc_region_t* reg) {
 
       /* Insert offset into headers */
       header_ptr = (uint32_t*) mc_buffer_reserve_ptr(b, header);
-      *(header_ptr + x + z * kMCColumnMaxX) = off;
+      *(header_ptr + x + z * kMCColumnMaxX) = off / kBlockSize;
     }
   }
 
