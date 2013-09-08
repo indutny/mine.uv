@@ -80,8 +80,11 @@ typedef struct mc_slot_s mc_slot_t;
 typedef struct mc_region_s mc_region_t;
 typedef struct mc_column_s mc_column_t;
 typedef struct mc_chunk_s mc_chunk_t;
+typedef union mc_uuid_u mc_uuid_t;
 typedef struct mc_block_s mc_block_t;
 typedef struct mc_entity_s mc_entity_t;
+typedef struct mc_mob_s mc_mob_t;
+typedef struct mc_player_s mc_player_t;
 
 #define MC_COLUMN_MAX_X 32
 #define MC_COLUMN_MAX_Z 32
@@ -437,6 +440,14 @@ struct mc_slot_s {
   int allocated;
 };
 
+union mc_uuid_u {
+  unsigned char raw[16];
+  struct {
+    uint64_t high;
+    uint64_t low;
+  } obj;
+};
+
 struct mc_block_s {
   mc_block_id_t id;
   uint8_t metadata;
@@ -451,7 +462,6 @@ struct mc_entity_s {
   int8_t invulnerable;
   int16_t air;
   int16_t fire;
-  int16_t health;
   float fall_distance;
   double motion_x;
   double motion_y;
@@ -461,8 +471,37 @@ struct mc_entity_s {
   double pos_z;
   float yaw;
   float pitch;
+  mc_uuid_t uuid;
 
   struct mc_nbt_s* nbt;
+};
+
+struct mc_mob_s {
+  int16_t health;
+  float health_f;
+  float absorption_amount;
+  int16_t attack_time;
+  int16_t hurt_time;
+  int16_t death_time;
+  int8_t can_pick_up_loot;
+  int8_t persistence_required;
+  char* custom_name;
+  int custom_name_len;
+  int8_t custom_name_visible;
+  int8_t leashed;
+  int8_t leash_is_uuid;
+  union {
+    mc_uuid_t uuid;
+    struct {
+      int32_t x;
+      int32_t y;
+      int32_t z;
+    } pos;
+  } leash;
+};
+
+struct mc_player_s {
+  mc_mob_t common;
 };
 
 struct mc_chunk_s {

@@ -315,8 +315,9 @@ int mc_anvil__parse_entity(mc_nbt_t* nbt, mc_entity_t* entity) {
   NBT_OPT_READ(nbt, "Invulnerable", kNBTByte, &entity->invulnerable, 0);
   NBT_OPT_READ(nbt, "Air", kNBTShort, &entity->air, 0);
   NBT_OPT_READ(nbt, "Fire", kNBTShort, &entity->fire, 0);
-  NBT_OPT_READ(nbt, "Health", kNBTShort, &entity->health, 0);
   NBT_OPT_READ(nbt, "FallDistance", kNBTFloat, &entity->fall_distance, 0.0);
+  NBT_READ(nbt, "UUIDMost", kNBTLong, &entity->uuid.obj.high);
+  NBT_READ(nbt, "UUIDLeast", kNBTLong, &entity->uuid.obj.low);
 
   list = NBT_GET(nbt, "Pos", kNBTList);
   if (list == NULL ||

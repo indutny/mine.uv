@@ -341,8 +341,9 @@ static int mc_anvil__update_entity(mc_entity_t* entity) {
   NBT_OPT_SET(entity->nbt, "Invulnerable", kNBTByte, &entity->invulnerable);
   NBT_OPT_SET(entity->nbt, "Air", kNBTShort, &entity->air);
   NBT_OPT_SET(entity->nbt, "Fire", kNBTShort, &entity->fire);
-  NBT_OPT_SET(entity->nbt, "Health", kNBTShort, &entity->health);
   NBT_OPT_SET(entity->nbt, "FallDistance", kNBTFloat, &entity->fall_distance);
+  NBT_SET(entity->nbt, "UUIDMost", kNBTLong, &entity->uuid.obj.high);
+  NBT_SET(entity->nbt, "UUIDLeast", kNBTLong, &entity->uuid.obj.low);
 
   pos = NBT_GET(entity->nbt, "Pos", kNBTList);
   motion = NBT_GET(entity->nbt, "Motion", kNBTList);
