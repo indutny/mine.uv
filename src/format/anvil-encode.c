@@ -85,7 +85,7 @@ int mc_anvil__encode(mc_buffer_t* b, mc_region_t* reg) {
 
       /* Padd chunk data */
       if (len % kBlockSize != 0) {
-        r = mc_buffer_reserve(b, len % kBlockSize);
+        r = mc_buffer_reserve(b, kBlockSize - (len % kBlockSize));
         if (r != 0)
           return r;
       }

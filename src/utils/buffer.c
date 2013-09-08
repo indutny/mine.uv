@@ -313,7 +313,9 @@ int mc_buffer__check_grow(mc_buffer_t* buffer, int size) {
     return 0;
 
   /* Grow */
-  new_capacity = buffer->capacity + kCapacityIncrement;
+  new_capacity = buffer->capacity + size;
+  if (new_capacity % kCapacityIncrement != 0)
+    new_capacity += kCapacityIncrement - (new_capacity % kCapacityIncrement);
   new_data = malloc(new_capacity);
   if (new_data == NULL)
     return kMCBufferNoMem;
